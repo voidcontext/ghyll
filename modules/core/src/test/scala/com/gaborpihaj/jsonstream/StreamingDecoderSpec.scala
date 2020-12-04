@@ -11,8 +11,28 @@ import org.scalatest.wordspec.AnyWordSpec
 class StreamingDecoderSpec extends AnyWordSpec with Matchers {
   "decode()" should {
     val file = new File("modules/core/src/test/resources/test-object.json")
+    val fileSimple = new File("modules/core/src/test/resources/test-object-simple.json")
     case class Data(value: BigDecimal, additional: Option[List[String]])
     case class Obj(name: String, bool: Option[Boolean], data: Option[Data])
+
+    "decode simple json" in {
+
+      StreamingDecoder[IO]()
+        .decode[Obj](fileSimple)
+        .use {
+          _.compile.toList.map {
+            _ should be(
+              List(
+                Right("foo" -> Obj("foo", Some(false), Some(Data(BigDecimal.valueOf(1L), None)))),
+                Right("bar" -> Obj("bar", None, Some(Data(BigDecimal.valueOf(1.9), Some(List.empty))))),
+                Right("bar-2" -> Obj("bar2", None, Some(Data(BigDecimal.valueOf(1.9), Some(List("1", "2", "3")))))),
+                Right("baz" -> Obj("baz", None, None))
+              )
+            )
+          }
+        }
+        .unsafeRunSync()
+    }
 
     "decode json" in {
 
