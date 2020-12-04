@@ -1,0 +1,36 @@
+{
+    "data": {
+        "foo": {
+            "name": "foo",
+            "bool": false,
+            "data": {
+                "value": 1
+            }
+        },
+        "bar": {
+            "name": "bar",
+            "bool": null,
+            "data": {
+                "value": 1.9,
+                "additional": []
+            }
+        },
+        "bar-2": {
+            "name": "bar2",
+            "data": {
+                "value": 1.9,
+                "additional": ["1", "2", "3"]
+            }
+        },
+        "baz": {
+            "name": "baz"
+        }
+    },
+    "some-key" : {
+        "name": "foo",
+        "data": {
+            "value": 1.9,
+            "additional": ["foobar"]
+        }
+    }
+}
