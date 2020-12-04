@@ -3,3 +3,4 @@
 result
 target/
 metals.sbt
+benchmark/generated.json
