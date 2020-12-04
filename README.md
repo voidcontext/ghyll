@@ -1,4 +1,4 @@
-# json-stream
+# json-stream [![Build Status](https://travis-ci.org/voidcontext/json-stream.svg?branch=main)](https://travis-ci.org/voidcontext/json-stream)
 A library to process large JSON objects as (key, value) stream
 
 ## Problem Statement
