@@ -10,7 +10,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class StreamingDecoderSpec extends AnyWordSpec with Matchers {
   "decode()" should {
-    val file = new File("src/test/resources/test-object.json")
+    val file = new File("modules/core/src/test/resources/test-object.json")
     case class Data(value: BigDecimal, additional: Option[List[String]])
     case class Obj(name: String, bool: Option[Boolean], data: Option[Data])
 

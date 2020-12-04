@@ -7,7 +7,7 @@ ThisBuild / dynverSeparator := "-"
 
 val circeVersion = "0.13.0"
 
-lazy val root = (project in file("."))
+lazy val core = (project in file("modules/core"))
   .settings(
     libraryDependencies ++=
       Seq(
