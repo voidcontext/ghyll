@@ -2,6 +2,8 @@ ThisBuild / name := "json-stream"
 ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / organization := "com.gaborpihaj"
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.4.3"
+ThisBuild / dynverSonatypeSnapshots := true
+ThisBuild / dynverSeparator := "-"
 
 val circeVersion = "0.13.0"
 
