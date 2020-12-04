@@ -42,7 +42,7 @@ object StreamingDecoder {
     val dataOnly: Preprocessor = root("data")
   }
 
-  def apply[F[_]: Sync]() =
+  def apply[F[_]: Sync](): StreamingDecoder[F] =
     new StreamingDecoder[F] {
       def decode[T: Decoder](
         file: File,
