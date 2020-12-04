@@ -42,11 +42,10 @@ lazy val benchmark = (project in file("benchmark"))
       "com.monovore" %% "decline-effect" % declineVersion,
       "io.circe"     %% "circe-generic"  % circeVersion,
       "io.circe"     %% "circe-parser"   % circeVersion
-    ),
+    )
   )
   .dependsOn(core)
   .enablePlugins(JavaAppPackaging)
-
 
 addCommandAlias("fmt", ";scalafix ;test:scalafix ;scalafmtAll ;scalafmtSbt")
 addCommandAlias("prePush", ";fmt ;clean ;reload ;test")
