@@ -33,7 +33,7 @@ object StreamingDecoder {
 
     def root(key: String): Preprocessor =
       reader =>
-        if (reader.nextName() == key) ()
+        if (reader.nextName() == key) reader.beginObject()
         else {
           reader.skipValue()
           root(key)(reader)
@@ -55,7 +55,6 @@ object StreamingDecoder {
               Sync[F].delay {
                 reader.beginObject()
                 preprocessor(reader)
-                reader.beginObject()
                 reader
               }
             )
