@@ -13,8 +13,7 @@ import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import com.gaborpihaj.jsonstream.StreamingDecoder
-import com.gaborpihaj.jsonstream.StreamingDecoder.StreamingDecoderError
+import com.gaborpihaj.jsonstream.StreamingDecoder.{StreamingDecoderError, decode => streamDecode}
 import com.gaborpihaj.jsonstream.benchmark.CliCommand._
 import com.gaborpihaj.jsonstream.benchmark.Data.{DataSet, Item, PricePoint}
 import com.monovore.decline.Opts
@@ -83,8 +82,7 @@ object Main
           repeat(
             for {
               errorOrTotal <-
-                StreamingDecoder[IO]()
-                  .decode[Item](sampleFile.toFile())
+                streamDecode[IO, Item](sampleFile.toFile())
                   .use(
                     _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
                       .fold[Either[StreamingDecoderError, BigDecimal]](Right(BigDecimal.valueOf(0)))((sum, t) =>
