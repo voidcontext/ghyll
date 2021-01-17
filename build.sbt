@@ -23,14 +23,15 @@ lazy val core = (project in file("modules/core"))
     defaultSettings,
     libraryDependencies ++=
       Seq(
-        "org.typelevel"       %% "cats-core"     % catsVersion,
-        "org.typelevel"       %% "cats-effect"   % catsEffectVersion,
-        "org.typelevel"       %% "mouse"         % "0.26.2",
-        "co.fs2"              %% "fs2-core"      % fs2Version,
-        "com.google.code.gson" % "gson"          % gsonVersion,
-        "io.circe"            %% "circe-core"    % circeVersion,
-        "org.scalatest"       %% "scalatest"     % scalaTestVersion % Test,
-        "io.circe"            %% "circe-generic" % circeVersion     % Test
+        "org.typelevel"       %% "cats-core"      % catsVersion,
+        "org.typelevel"       %% "cats-effect"    % catsEffectVersion,
+        "org.typelevel"       %% "mouse"          % "0.26.2",
+        "co.fs2"              %% "fs2-core"       % fs2Version,
+        "com.google.code.gson" % "gson"           % gsonVersion,
+        "com.chuusai"          % "shapeless_2.13" % "2.3.3",
+        "io.circe"            %% "circe-core"     % circeVersion,
+        "org.scalatest"       %% "scalatest"      % scalaTestVersion % Test,
+        "io.circe"            %% "circe-generic"  % circeVersion     % Test
       )
   )
 
