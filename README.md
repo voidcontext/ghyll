@@ -54,59 +54,63 @@ $ ./benchmark.sh
 
 ...
 
+##############################################################
 parse using circe
-Right(496.2931715811804485143)
-Current memory usage: 922
-Right(496.2931715811804485143)
-Current memory usage: 1093
-Right(496.2931715811804485143)
-Current memory usage: 2109
-Right(496.2931715811804485143)
-Current memory usage: 1270
-Right(496.2931715811804485143)
-Current memory usage: 1113
+Right(504.6476855415109732098)
+Current memory usage: 894
+Right(504.6476855415109732098)
+Current memory usage: 1779
+Right(504.6476855415109732098)
+Current memory usage: 1882
+Right(504.6476855415109732098)
+Current memory usage: 1315
+Right(504.6476855415109732098)
+Current memory usage: 1013
 MemoryStats
-Average: 1301
-Max: 2109
+Average: 1376
+Max: 1882
 
-real	0m14.712s
-user	1m30.957s
-sys	0m2.812s
+real	0m14.604s
+user	1m32.937s
+sys	0m3.113s
+
+##############################################################
 parse using json-stream
-Right(496.2931715811804485143)
-Current memory usage: 149
-Right(496.2931715811804485143)
-Current memory usage: 187
-Right(496.2931715811804485143)
-Current memory usage: 223
-Right(496.2931715811804485143)
-Current memory usage: 38
-Right(496.2931715811804485143)
-Current memory usage: 74
+Right(504.6476855415109732098)
+Current memory usage: 195
+Right(504.6476855415109732098)
+Current memory usage: 208
+Right(504.6476855415109732098)
+Current memory usage: 222
+Right(504.6476855415109732098)
+Current memory usage: 14
+Right(504.6476855415109732098)
+Current memory usage: 28
 MemoryStats
-Average: 134
-Max: 223
+Average: 133
+Max: 222
 
-real	0m9.986s
-user	0m11.839s
-sys	0m0.471s
+real	0m10.376s
+user	0m12.135s
+sys	0m0.488s
+
+##############################################################
 parse using json-stream v2
-Right(496.2931715811804485143)
-Current memory usage: 166
-Right(496.2931715811804485143)
-Current memory usage: 126
-Right(496.2931715811804485143)
-Current memory usage: 60
-Right(496.2931715811804485143)
-Current memory usage: 214
-Right(496.2931715811804485143)
-Current memory usage: 147
+Right(504.6476855415109732098)
+Current memory usage: 48
+Right(504.6476855415109732098)
+Current memory usage: 67
+Right(504.6476855415109732098)
+Current memory usage: 220
+Right(504.6476855415109732098)
+Current memory usage: 154
+Right(504.6476855415109732098)
+Current memory usage: 87
 MemoryStats
-Average: 142
-Max: 214
+Average: 115
+Max: 220
 
-real	0m6.167s
-user	0m7.757s
-sys	0m0.401s
-
+real	0m6.224s
+user	0m7.695s
+sys	0m0.422s
 ```
