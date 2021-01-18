@@ -1,5 +1,6 @@
 package com.gaborpihaj.jsonstream.benchmark
 
+import java.io.FileInputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.time.LocalDate
@@ -14,12 +15,14 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.gaborpihaj.jsonstream.StreamingDecoder.{StreamingDecoderError, decode => streamDecode}
+import com.gaborpihaj.jsonstream.StreamingDecoder2
 import com.gaborpihaj.jsonstream.benchmark.CliCommand._
 import com.gaborpihaj.jsonstream.benchmark.Data.{DataSet, Item, PricePoint}
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import io.circe.parser.decode
 import io.circe.syntax._
+//import com.gaborpihaj.jsonstream.StreamingDecoder2
 
 object Main
     extends CommandIOApp(
@@ -57,7 +60,7 @@ object Main
       IO.delay(println(s"Max: ${values.max}"))
 
   def main: Opts[IO[ExitCode]] =
-    (generateSampleJson orElse [CliCommand] benchmarkCirce orElse [CliCommand] benchmarkJsonStream).map {
+    (generateSampleJson orElse [CliCommand] benchmarkCirce orElse [CliCommand] benchmarkJsonStream orElse [CliCommand] benchmarkJsonStream2).map {
       case GenerateSampleJson     =>
         Data
           .generate[IO]
@@ -95,6 +98,36 @@ object Main
             } yield mem,
             rounds
           ) >>= printMemoryStats).as(ExitCode.Success)
+
+      case BenchmarkJsonStream2(rounds) =>
+        (IO.delay(println("parse using json-stream v2")) >>
+          IO.delay {
+            implicit val ppDecoder: StreamingDecoder2.Decoder[PricePoint] = StreamingDecoder2.deriveDecoder
+            val decoder: StreamingDecoder2.Decoder[Item] = StreamingDecoder2.deriveDecoder
+            val streaming: StreamingDecoder2.StreamingDecoder[IO] = StreamingDecoder2.decoder[IO]
+
+            streaming -> decoder
+          }.flatMap { case (streaming, decoder) =>
+            implicit val d: StreamingDecoder2.Decoder[Item] = decoder
+            repeat(
+              for {
+                inputStream  <- IO.delay(new FileInputStream(sampleFile.toFile()))
+                errorOrTotal <-
+                  streaming
+                    .decodeKeyValues[Item](inputStream)
+                    .use(
+                      _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
+                        .fold[Either[StreamingDecoder2.StreamingDecoderError, BigDecimal]](
+                          Right(BigDecimal.valueOf(0))
+                        )((sum, t) => (sum, t).mapN(_ + _))
+                    )
+                _            <- IO.delay(println(errorOrTotal))
+                mem          <- memoryUsage()
+                _            <- printMemoryUsage(mem)
+              } yield mem,
+              rounds
+            ) >>= printMemoryStats
+          }).as(ExitCode.Success)
     }
 
 }

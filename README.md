@@ -31,6 +31,20 @@ converted to circe's JSON AST and then using that we can decode it
 into the Scala representation. (This could be further optimised, but
 it worked well for the POC).
 
+### StreamingDecoder2
+
+This experiment is trying to replace circe, with a bespoke,
+semi-automatically derived decoder. I'd consider this POC succesful as
+the memory usage is the same as in case of V1, but according to the
+benchmarks it's even faster (this comparison might not be fair as this
+decoder has only minimal number of features, just enough to run tests
+and benchmarks). This version should really shine when there are big
+parts of the JSON that could be discarded.
+
+## TODO
+
+[ ] Create benchmark that shows the strength of V2
+
 
 ## Benchmark results
 
@@ -41,39 +55,58 @@ $ ./benchmark.sh
 ...
 
 parse using circe
-Right(517.211378369668927341746)
-Current memory usage: 916
-Right(517.211378369668927341746)
-Current memory usage: 936
-Right(517.211378369668927341746)
-Current memory usage: 1872
-Right(517.211378369668927341746)
-Current memory usage: 1389
-Right(517.211378369668927341746)
-Current memory usage: 1039
+Right(496.2931715811804485143)
+Current memory usage: 922
+Right(496.2931715811804485143)
+Current memory usage: 1093
+Right(496.2931715811804485143)
+Current memory usage: 2109
+Right(496.2931715811804485143)
+Current memory usage: 1270
+Right(496.2931715811804485143)
+Current memory usage: 1113
 MemoryStats
-Average: 1230
-Max: 1872
+Average: 1301
+Max: 2109
 
-real	0m15.010s
-user	1m35.808s
-sys	0m3.162s
+real	0m14.712s
+user	1m30.957s
+sys	0m2.812s
 parse using json-stream
-Right(517.211378369668927341746)
-Current memory usage: 92
-Right(517.211378369668927341746)
-Current memory usage: 191
-Right(517.211378369668927341746)
-Current memory usage: 109
-Right(517.211378369668927341746)
-Current memory usage: 31
-Right(517.211378369668927341746)
-Current memory usage: 175
+Right(496.2931715811804485143)
+Current memory usage: 149
+Right(496.2931715811804485143)
+Current memory usage: 187
+Right(496.2931715811804485143)
+Current memory usage: 223
+Right(496.2931715811804485143)
+Current memory usage: 38
+Right(496.2931715811804485143)
+Current memory usage: 74
 MemoryStats
-Average: 119
-Max: 191
+Average: 134
+Max: 223
 
-real	0m9.152s
-user	0m11.310s
-sys	0m0.418s
+real	0m9.986s
+user	0m11.839s
+sys	0m0.471s
+parse using json-stream v2
+Right(496.2931715811804485143)
+Current memory usage: 166
+Right(496.2931715811804485143)
+Current memory usage: 126
+Right(496.2931715811804485143)
+Current memory usage: 60
+Right(496.2931715811804485143)
+Current memory usage: 214
+Right(496.2931715811804485143)
+Current memory usage: 147
+MemoryStats
+Average: 142
+Max: 214
+
+real	0m6.167s
+user	0m7.757s
+sys	0m0.401s
+
 ```

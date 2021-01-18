@@ -8,6 +8,7 @@ object CliCommand {
   case object GenerateSampleJson extends CliCommand
   case class BenchmarkCirce(rounds: Int) extends CliCommand
   case class BenchmarkJsonStream(rounds: Int) extends CliCommand
+  case class BenchmarkJsonStream2(rounds: Int) extends CliCommand
 
   val generateSampleJson =
     Opts.subcommand(
@@ -32,6 +33,13 @@ object CliCommand {
     Opts.subcommand(
       Command(name = "json-stream", header = "Runs the benchmarks using json-stream")(
         roundOpts.map(BenchmarkJsonStream)
+      )
+    )
+
+  val benchmarkJsonStream2 =
+    Opts.subcommand(
+      Command(name = "json-stream2", header = "Runs the benchmarks using json-stream v2")(
+        roundOpts.map(BenchmarkJsonStream2)
       )
     )
 }
