@@ -9,7 +9,9 @@ import fs2.Stream
 import shapeless._
 import shapeless.labelled.FieldType
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.==", "scalafix:DisableSyntax.asInstanceOf"))
+@SuppressWarnings(
+  Array("scalafix:DisableSyntax.==", "scalafix:DisableSyntax.asInstanceOf", "scalafix:DisableSyntax.while")
+)
 object StreamingDecoder2 {
 
   sealed trait StreamingDecoderError
@@ -156,20 +158,25 @@ object StreamingDecoder2 {
         else
           decodedFields.flatMap { m =>
             val name = reader.nextName()
-            val field = fieldDecoders.fields.find(_.name == name)
-
-            decodeKeys(
-              reader,
-              for {
-                f <- field.toRight(StreamingDecodingFailure(s"Couldn't find decoder for field $name"))
-                d <- f.decoder.decode(reader)
-              } yield m + (name -> d)
-            )
-
+            fieldDecoders.fields
+              .find(_.name == name)
+              .fold({
+                reader.skipValue()
+                decodeKeys(reader, Right(m))
+              }) { field =>
+                decodeKeys(
+                  reader,
+                  field.decoder.decode(reader).map(v => m + (name -> v))
+                )
+              }
           }
 
       reader.beginObject()
       val hlist = decodeKeys(reader, Right(Map.empty))
+      while (reader.peek() == JsonToken.NAME) {
+        reader.nextName()
+        reader.skipValue()
+      }
       reader.endObject()
 
       hlist.flatMap(mapper.fromMap(_)).map(lg.from(_))

@@ -9,7 +9,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class StreamingDecoder2Spec extends AnyWordSpec with Matchers {
   case class Foo(bar: String, baz: Int)
-  implicit val decoder: Decoder[Foo] = StreamingDecoder2.deriveDecoder
+  implicit val fooDecoder: Decoder[Foo] = StreamingDecoder2.deriveDecoder
 
   "decodeObject()" should {
 
@@ -18,6 +18,31 @@ class StreamingDecoder2Spec extends AnyWordSpec with Matchers {
       StreamingDecoder2
         .decoder[IO]
         .decodeObject[Foo](new ByteArrayInputStream("""{"bar": "foobar", "baz": 42}""".getBytes()))
+        .use { result =>
+          IO.delay(
+            result should be(Right(Foo("foobar", 42)))
+          )
+        }
+        .unsafeRunSync()
+    }
+
+    "decode simple json: reverse field order" in {
+
+      StreamingDecoder2
+        .decoder[IO]
+        .decodeObject[Foo](new ByteArrayInputStream("""{"baz": 42, "bar": "foobar"}""".getBytes()))
+        .use { result =>
+          IO.delay(
+            result should be(Right(Foo("foobar", 42)))
+          )
+        }
+        .unsafeRunSync()
+    }
+    "decode simple json: additional field" in {
+
+      StreamingDecoder2
+        .decoder[IO]
+        .decodeObject[Foo](new ByteArrayInputStream("""{"baz": 42,"foo": true, "bar": "foobar"}""".getBytes()))
         .use { result =>
           IO.delay(
             result should be(Right(Foo("foobar", 42)))
