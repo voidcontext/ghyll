@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream
+package com.gaborpihaj.jsonstream.v1
 
 import java.io.{File, FileInputStream, InputStreamReader}
 

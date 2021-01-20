@@ -1,9 +1,8 @@
-package com.gaborpihaj.jsonstream
+package com.gaborpihaj.jsonstream.v2
 
 import java.io.{ByteArrayInputStream, File, FileInputStream}
 
 import cats.effect.IO
-import com.gaborpihaj.jsonstream.StreamingDecoder2.Decoder
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

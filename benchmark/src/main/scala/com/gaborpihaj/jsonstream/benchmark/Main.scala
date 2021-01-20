@@ -14,10 +14,11 @@ import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import com.gaborpihaj.jsonstream.StreamingDecoder.{StreamingDecoderError, decode => streamDecode}
-import com.gaborpihaj.jsonstream.StreamingDecoder2
 import com.gaborpihaj.jsonstream.benchmark.CliCommand._
 import com.gaborpihaj.jsonstream.benchmark.Data.{DataSet, Item, PricePoint}
+import com.gaborpihaj.jsonstream.v1.StreamingDecoder.{StreamingDecoderError, decode => streamDecode}
+import com.gaborpihaj.jsonstream.v2
+import com.gaborpihaj.jsonstream.v2.StreamingDecoder2
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import io.circe.parser.decode
@@ -102,13 +103,13 @@ object Main
       case BenchmarkJsonStream2(rounds) =>
         (IO.delay(println("parse using json-stream v2")) >>
           IO.delay {
-            implicit val ppDecoder: StreamingDecoder2.Decoder[PricePoint] = StreamingDecoder2.deriveDecoder
-            val decoder: StreamingDecoder2.Decoder[Item] = StreamingDecoder2.deriveDecoder
+            implicit val ppDecoder: v2.Decoder[PricePoint] = StreamingDecoder2.deriveDecoder
+            val decoder: v2.Decoder[Item] = StreamingDecoder2.deriveDecoder
             val streaming: StreamingDecoder2.StreamingDecoder[IO] = StreamingDecoder2.decoder[IO]
 
             streaming -> decoder
           }.flatMap { case (streaming, decoder) =>
-            implicit val d: StreamingDecoder2.Decoder[Item] = decoder
+            implicit val d: v2.Decoder[Item] = decoder
             repeat(
               for {
                 inputStream  <- IO.delay(new FileInputStream(sampleFile.toFile()))
@@ -117,7 +118,7 @@ object Main
                     .decodeKeyValues[Item](inputStream)
                     .use(
                       _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
-                        .fold[Either[StreamingDecoder2.StreamingDecoderError, BigDecimal]](
+                        .fold[Either[v2.StreamingDecoderError, BigDecimal]](
                           Right(BigDecimal.valueOf(0))
                         )((sum, t) => (sum, t).mapN(_ + _))
                     )
