@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream.v2
+package ghyll
 
 import shapeless._
 import shapeless.labelled.FieldType

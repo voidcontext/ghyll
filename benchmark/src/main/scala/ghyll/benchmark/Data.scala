@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream.benchmark
+package ghyll.benchmark
 
 import java.time.LocalDate
 import java.util.UUID

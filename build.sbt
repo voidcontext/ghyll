@@ -1,4 +1,4 @@
-ThisBuild / name := "json-stream"
+ThisBuild / name := "ghyll"
 ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / organization := "com.gaborpihaj"
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.4.3"
@@ -25,13 +25,10 @@ lazy val core = (project in file("modules/core"))
       Seq(
         "org.typelevel"       %% "cats-core"      % catsVersion,
         "org.typelevel"       %% "cats-effect"    % catsEffectVersion,
-        "org.typelevel"       %% "mouse"          % "0.26.2",
         "co.fs2"              %% "fs2-core"       % fs2Version,
         "com.google.code.gson" % "gson"           % gsonVersion,
         "com.chuusai"          % "shapeless_2.13" % "2.3.3",
-        "io.circe"            %% "circe-core"     % circeVersion,
-        "org.scalatest"       %% "scalatest"      % scalaTestVersion % Test,
-        "io.circe"            %% "circe-generic"  % circeVersion     % Test
+        "org.scalatest"       %% "scalatest"      % scalaTestVersion % Test
       )
   )
 

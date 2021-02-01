@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream.v2
+package ghyll
 
 sealed trait StreamingDecoderError
 case object Unimplemented extends StreamingDecoderError

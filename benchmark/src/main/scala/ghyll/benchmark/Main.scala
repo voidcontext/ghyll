@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream.benchmark
+package ghyll.benchmark
 
 import java.io.FileInputStream
 import java.nio.charset.StandardCharsets
@@ -14,21 +14,17 @@ import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import com.gaborpihaj.jsonstream.benchmark.CliCommand._
-import com.gaborpihaj.jsonstream.benchmark.Data.{DataSet, Item, PricePoint}
-import com.gaborpihaj.jsonstream.v1.StreamingDecoder.{StreamingDecoderError, decode => streamDecode}
-import com.gaborpihaj.jsonstream.v2
-import com.gaborpihaj.jsonstream.v2.StreamingDecoder2
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
+import ghyll.benchmark.CliCommand._
+import ghyll.benchmark.Data.{DataSet, Item, PricePoint}
 import io.circe.parser.decode
 import io.circe.syntax._
-//import com.gaborpihaj.jsonstream.StreamingDecoder2
 
 object Main
     extends CommandIOApp(
       name = "benchmark",
-      header = "Benchmarking tools for com.gaborpihaj.jsonstream"
+      header = "Benchmarking tools for Ghyll"
     ) {
 
   val sampleFile = Paths.get("benchmark/generated.json")
@@ -61,7 +57,7 @@ object Main
       IO.delay(println(s"Max: ${values.max}"))
 
   def main: Opts[IO[ExitCode]] =
-    (generateSampleJson orElse [CliCommand] benchmarkCirce orElse [CliCommand] benchmarkJsonStream orElse [CliCommand] benchmarkJsonStream2).map {
+    (generateSampleJson orElse [CliCommand] benchmarkCirce orElse [CliCommand] benchmarkGhyll).map {
       case GenerateSampleJson     =>
         Data
           .generate[IO]
@@ -81,35 +77,16 @@ object Main
             rounds
           ) >>= printMemoryStats).as(ExitCode.Success)
 
-      case BenchmarkJsonStream(rounds) =>
-        (IO.delay(println("parse using json-stream")) >>
-          repeat(
-            for {
-              errorOrTotal <-
-                streamDecode[IO, Item](sampleFile.toFile())
-                  .use(
-                    _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
-                      .fold[Either[StreamingDecoderError, BigDecimal]](Right(BigDecimal.valueOf(0)))((sum, t) =>
-                        (sum, t).mapN(_ + _)
-                      )
-                  )
-              _            <- IO.delay(println(errorOrTotal))
-              mem          <- memoryUsage()
-              _            <- printMemoryUsage(mem)
-            } yield mem,
-            rounds
-          ) >>= printMemoryStats).as(ExitCode.Success)
-
-      case BenchmarkJsonStream2(rounds) =>
-        (IO.delay(println("parse using json-stream v2")) >>
+      case BenchmarkGhyll(rounds) =>
+        (IO.delay(println("parse using ghyll")) >>
           IO.delay {
-            implicit val ppDecoder: v2.Decoder[PricePoint] = StreamingDecoder2.deriveDecoder
-            val decoder: v2.Decoder[Item] = StreamingDecoder2.deriveDecoder
-            val streaming: StreamingDecoder2.StreamingDecoder[IO] = StreamingDecoder2.decoder[IO]
+            implicit val ppDecoder: ghyll.Decoder[PricePoint] = ghyll.StreamingDecoder2.deriveDecoder
+            val decoder: ghyll.Decoder[Item] = ghyll.StreamingDecoder2.deriveDecoder
+            val streaming: ghyll.StreamingDecoder2.StreamingDecoder[IO] = ghyll.StreamingDecoder2.decoder[IO]
 
             streaming -> decoder
           }.flatMap { case (streaming, decoder) =>
-            implicit val d: v2.Decoder[Item] = decoder
+            implicit val d: ghyll.Decoder[Item] = decoder
             repeat(
               for {
                 inputStream  <- IO.delay(new FileInputStream(sampleFile.toFile()))
@@ -118,7 +95,7 @@ object Main
                     .decodeKeyValues[Item](inputStream)
                     .use(
                       _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
-                        .fold[Either[v2.StreamingDecoderError, BigDecimal]](
+                        .fold[Either[ghyll.StreamingDecoderError, BigDecimal]](
                           Right(BigDecimal.valueOf(0))
                         )((sum, t) => (sum, t).mapN(_ + _))
                     )

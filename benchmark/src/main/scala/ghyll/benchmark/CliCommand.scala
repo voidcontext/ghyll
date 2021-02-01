@@ -1,4 +1,4 @@
-package com.gaborpihaj.jsonstream.benchmark
+package ghyll.benchmark
 
 import com.monovore.decline.{Command, Opts}
 
@@ -7,8 +7,7 @@ sealed trait CliCommand
 object CliCommand {
   case object GenerateSampleJson extends CliCommand
   case class BenchmarkCirce(rounds: Int) extends CliCommand
-  case class BenchmarkJsonStream(rounds: Int) extends CliCommand
-  case class BenchmarkJsonStream2(rounds: Int) extends CliCommand
+  case class BenchmarkGhyll(rounds: Int) extends CliCommand
 
   val generateSampleJson =
     Opts.subcommand(
@@ -29,17 +28,10 @@ object CliCommand {
   val benchmarkCirce =
     Opts.subcommand(Command(name = "circe", header = "Runs the benchmarks using circe")(roundOpts.map(BenchmarkCirce)))
 
-  val benchmarkJsonStream =
+  val benchmarkGhyll =
     Opts.subcommand(
-      Command(name = "json-stream", header = "Runs the benchmarks using json-stream")(
-        roundOpts.map(BenchmarkJsonStream)
-      )
-    )
-
-  val benchmarkJsonStream2 =
-    Opts.subcommand(
-      Command(name = "json-stream2", header = "Runs the benchmarks using json-stream v2")(
-        roundOpts.map(BenchmarkJsonStream2)
+      Command(name = "ghyll", header = "Runs the benchmarks using ghyll")(
+        roundOpts.map(BenchmarkGhyll)
       )
     )
 }

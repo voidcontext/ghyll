@@ -1,5 +1,3 @@
-package com.gaborpihaj.jsonstream
-
-package object v2 {
+package object ghyll {
   type StreamingDecoderResult[A] = Either[StreamingDecoderError, A]
 }
