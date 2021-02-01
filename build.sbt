@@ -10,7 +10,6 @@ ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports"
 ThisBuild / dynverSonatypeSnapshots := true
 ThisBuild / dynverSeparator := "-"
 
-
 ThisBuild / homepage := Some(url(website))
 ThisBuild / publishTo := sonatypePublishToBundle.value
 // Following 2 lines need to get around https://github.com/sbt/sbt/issues/4275
@@ -30,7 +29,6 @@ lazy val publishSettings = List(
   publishMavenStyle := true,
   sonatypeProjectHosting := Some(GitHubHosting("voidcontext", libraryName, "gabor.pihaj@gmail.com"))
 )
-
 
 lazy val defaultSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oDF"),
