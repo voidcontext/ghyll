@@ -1,7 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- it is now possible to decode an object under the given JSON path
+
+### Fixed
+
+- fixed decoding when an optional field was `null` in the JSON
+
 ## [0.1.0] - 2021-02-01
-### Added 
+
+### Added
 - Implement `decodeObject` and `decodeKeyValues` functions
 - Implement `Decoder` instances for some scalar types
   - String

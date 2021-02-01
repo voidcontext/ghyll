@@ -33,7 +33,9 @@ object Decoder {
     createDecoder[LocalDate](JsonToken.STRING)(r => LocalDate.parse(r.nextString()))
 
   implicit def optionDecoder[A](implicit aDecoder: Decoder[A]): Decoder[Option[A]] =
-    reader => aDecoder.decode(reader).map(Option(_))
+    reader =>
+      if (reader.peek() == JsonToken.NULL) { reader.nextNull(); Right(None) }
+      else aDecoder.decode(reader).map(Option(_))
 
   implicit def listDecoder[A](implicit aDecoder: Decoder[A]): Decoder[List[A]] =
     reader => {
