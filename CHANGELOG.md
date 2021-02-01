@@ -6,6 +6,7 @@
 
 - it is now possible to decode an object under a given JSON path
 - `Decoder` can be fully automatically derived
+- decode* shortcuts that can decode from `java.io.File`
 
 ### Fixed
 
