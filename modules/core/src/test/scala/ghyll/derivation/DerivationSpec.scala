@@ -37,6 +37,13 @@ class DerivationSpec extends AnyWordSpec with Matchers with Derivation {
     }
   }
 
+  "auto" should {
+    "derive decoders automatically for case classes" in {
+      import ghyll.derivation.auto._
+      check(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
+    }
+  }
+
   def check[T: Decoder](expected: T, json: String) = {
     ghyll
       .decodeObject[IO, T](new ByteArrayInputStream(json.getBytes()))

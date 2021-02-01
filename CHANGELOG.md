@@ -4,7 +4,8 @@
 
 ### Added
 
-- it is now possible to decode an object under the given JSON path
+- it is now possible to decode an object under a given JSON path
+- `Decoder` can be fully automatically derived
 
 ### Fixed
 
