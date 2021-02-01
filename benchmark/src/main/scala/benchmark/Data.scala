@@ -1,4 +1,4 @@
-package ghyll.benchmark
+package benchmark
 
 import java.time.LocalDate
 import java.util.UUID

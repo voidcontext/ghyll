@@ -15,6 +15,8 @@ val declineVersion = "1.3.0"
 
 lazy val defaultSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oDF"),
+  addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1"),
+  addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.11.3" cross CrossVersion.full),
   addCompilerPlugin(scalafixSemanticdb)
 )
 

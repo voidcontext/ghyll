@@ -1,5 +1,5 @@
 # ghyll ![Scala CI](https://github.com/voidcontext/ghyll/workflows/Scala%20CI/badge.svg)
-`ghyll` is a streaming JSON library for Scala
+`ghyll` is a streaming JSON decoder library for Scala
 
 ## Overview
 

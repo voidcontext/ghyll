@@ -1,5 +1,6 @@
-package ghyll
+package ghyll.derivation
 
+import ghyll.{StreamingDecoderError, StreamingDecoderResult, StreamingDecodingFailure}
 import shapeless._
 import shapeless.labelled.{field, FieldType}
 

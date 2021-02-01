@@ -1,20 +1,22 @@
-package ghyll
+package ghyll.derivation
 
+import ghyll.Decoder
+import ghyll.derivation.FieldDecoder.Field
 import shapeless._
 import shapeless.labelled.FieldType
 
-trait Field {
-  type Out
-  def name: String
-  def decoder: Decoder[Out]
-}
-
 // base idea from: https://stackoverflow.com/a/53438635
-sealed trait FieldDecoder[T] {
+private[ghyll] sealed trait FieldDecoder[T] {
   def fields: List[Field]
 }
 
-object FieldDecoder {
+private[ghyll] object FieldDecoder {
+  trait Field {
+    type Out
+    def name: String
+    def decoder: Decoder[Out]
+  }
+
   implicit val hnilFieldDecoder: FieldDecoder[HNil] =
     new FieldDecoder[HNil] {
       val fields: List[Field] = List.empty

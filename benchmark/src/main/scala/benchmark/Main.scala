@@ -1,4 +1,4 @@
-package ghyll.benchmark
+package benchmark
 
 import java.io.FileInputStream
 import java.nio.charset.StandardCharsets
@@ -8,6 +8,8 @@ import java.time.LocalDate
 import scala.io.Source
 import scala.math.Ordering.Implicits._
 
+import benchmark.CliCommand._
+import benchmark.Data.{DataSet, Item, PricePoint}
 import cats.effect.{ExitCode, IO}
 import cats.instances.either._
 import cats.instances.list._
@@ -16,9 +18,8 @@ import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
-import ghyll.benchmark.CliCommand._
-import ghyll.benchmark.Data.{DataSet, Item, PricePoint}
-import io.circe.parser.decode
+import ghyll._
+import io.circe.parser.{decode => circeDecode}
 import io.circe.syntax._
 
 object Main
@@ -68,7 +69,7 @@ object Main
         (IO.delay(println("parse using circe")) >>
           repeat(
             for {
-              result       <- IO.delay(decode[DataSet](Source.fromFile(sampleFile.toUri()).mkString))
+              result       <- IO.delay(circeDecode[DataSet](Source.fromFile(sampleFile.toUri()).mkString))
               errorOrTotal <- IO.delay(result.map(totalPrice))
               _            <- IO.delay(println(errorOrTotal))
               mem          <- memoryUsage()
@@ -79,33 +80,25 @@ object Main
 
       case BenchmarkGhyll(rounds) =>
         (IO.delay(println("parse using ghyll")) >>
-          IO.delay {
-            implicit val ppDecoder: ghyll.Decoder[PricePoint] = ghyll.StreamingDecoder2.deriveDecoder
-            val decoder: ghyll.Decoder[Item] = ghyll.StreamingDecoder2.deriveDecoder
-            val streaming: ghyll.StreamingDecoder2.StreamingDecoder[IO] = ghyll.StreamingDecoder2.decoder[IO]
-
-            streaming -> decoder
-          }.flatMap { case (streaming, decoder) =>
-            implicit val d: ghyll.Decoder[Item] = decoder
-            repeat(
-              for {
-                inputStream  <- IO.delay(new FileInputStream(sampleFile.toFile()))
-                errorOrTotal <-
-                  streaming
-                    .decodeKeyValues[Item](inputStream)
-                    .use(
-                      _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
-                        .fold[Either[ghyll.StreamingDecoderError, BigDecimal]](
-                          Right(BigDecimal.valueOf(0))
-                        )((sum, t) => (sum, t).mapN(_ + _))
-                    )
-                _            <- IO.delay(println(errorOrTotal))
-                mem          <- memoryUsage()
-                _            <- printMemoryUsage(mem)
-              } yield mem,
-              rounds
-            ) >>= printMemoryStats
-          }).as(ExitCode.Success)
+          (repeat(
+            for {
+              implicit0(ppDecoder: Decoder[PricePoint]) <- IO.pure(deriveDecoder[PricePoint])
+              implicit0(itemDecoder: Decoder[Item])     <- IO.pure(deriveDecoder[Item])
+              inputStream                               <- IO.delay(new FileInputStream(sampleFile.toFile()))
+              errorOrTotal                              <-
+                decodeKeyValues[IO, Item](inputStream)
+                  .use(
+                    _.map(_.map(kv => findLatestPrice(kv._2.prices))).compile
+                      .fold[Either[ghyll.StreamingDecoderError, BigDecimal]](
+                        Right(BigDecimal.valueOf(0))
+                      )((sum, t) => (sum, t).mapN(_ + _))
+                  )
+              _                                         <- IO.delay(println(errorOrTotal))
+              mem                                       <- memoryUsage()
+              _                                         <- printMemoryUsage(mem)
+            } yield mem,
+            rounds
+          ) >>= printMemoryStats)).as(ExitCode.Success)
     }
 
 }

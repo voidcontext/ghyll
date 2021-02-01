@@ -1,4 +1,4 @@
-package ghyll.benchmark
+package benchmark
 
 import com.monovore.decline.{Command, Opts}
 
