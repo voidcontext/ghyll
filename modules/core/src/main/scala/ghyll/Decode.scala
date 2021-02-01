@@ -1,6 +1,6 @@
 package ghyll
 
-import java.io.{InputStream, InputStreamReader}
+import java.io.{File, FileInputStream, InputStream, InputStreamReader}
 
 import scala.annotation.tailrec
 
@@ -15,9 +15,52 @@ import ghyll.jsonpath._
 private[ghyll] trait Decode {
   def decodeArray[F[_]: Sync, T: Decoder](json: InputStream): Resource[F, Stream[F, StreamingDecoderResult[T]]] = ???
 
+  /**
+   * Shortcut of
+   * [[decodeObject[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which safely wraps the given file in a `Resource` and transforms
+   * it to an InputStream. It is using `JNil` as path.
+   *
+   * @param json the file containing the JSON
+   * @return
+   */
+  def decodeObject[F[_]: Sync, T: Decoder](json: File): Resource[F, StreamingDecoderResult[T]] =
+    decodeObject(JNil, json)
+
+  /**
+   * Shortcut of
+   * [[decodeObject[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which safely wraps the given file in a `Resource` and transforms
+   * it to an InputStream.
+   *
+   * @param path the path needs to be traversed to find the required
+   *             value
+   * @param json the file containing the JSON
+   * @return
+   */
+  def decodeObject[F[_]: Sync, T: Decoder](path: JsonPath, json: File): Resource[F, StreamingDecoderResult[T]] =
+    fileInputStreamResource(json).flatMap(decodeObject(path, _))
+
+  /**
+   * Shortcut of
+   * [[decodeObject[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which is using `JNil` as path.
+   *
+   * @param json
+   * @return
+   */
   def decodeObject[F[_]: Sync, T: Decoder](json: InputStream): Resource[F, StreamingDecoderResult[T]] =
     decodeObject(JNil, json)
 
+  /**
+   * Parse the given JSON and decodes the value under the given JSON
+   * path
+   *
+   * @param path the path needs to be traversed to find the required
+   *             value
+   * @param json the JSON as input stream
+   * @return
+   */
   def decodeObject[F[_]: Sync, T: Decoder](path: JsonPath, json: InputStream): Resource[F, StreamingDecoderResult[T]] =
     readerResource(json).map { reader =>
       if (reader.peek() === JsonToken.BEGIN_OBJECT) {
@@ -26,11 +69,61 @@ private[ghyll] trait Decode {
       } else Left(StreamingDecodingFailure("Not an object!"))
     }
 
-  def decodeKeyValues[F[_]: Sync, T](
-    json: InputStream
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, StreamingDecoderResult[(String, T)]]] =
+  /**
+   * Shortcut of
+   * [[decodeKeyValues[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which safely wraps the given file in a `Resource` and transforms it to an InputStream. It is using `JNil` as path
+   *
+   * @param json the file containing the JSON
+   * @return
+   */
+  def decodeKeyValues[F[_]: Sync, T: Decoder](
+    json: File
+  ): Resource[F, Stream[F, StreamingDecoderResult[(String, T)]]] =
     decodeKeyValues(JNil, json)
 
+  /**
+   * Shortcut of
+   * [[decodeKeyValues[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which safely wraps the given file in a `Resource`
+   *
+   * @param path a path of object attributes that needs to be
+   *             traversed before the values can be emitted
+   * @param json the file containing the JSON
+   * @return
+   */
+  def decodeKeyValues[F[_]: Sync, T: Decoder](
+    path: JsonPath,
+    json: File
+  ): Resource[F, Stream[F, StreamingDecoderResult[(String, T)]]] =
+    fileInputStreamResource(json)
+      .flatMap(decodeKeyValues(path, _))
+
+  /**
+   * Shortcut of
+   * [[decodeKeyValues[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]],
+   * which is using `JNil` as path.
+   *
+   * @param json the JSON as input stream
+   * @return
+   */
+  def decodeKeyValues[F[_]: Sync, T: Decoder](
+    json: InputStream
+  ): Resource[F, Stream[F, StreamingDecoderResult[(String, T)]]] =
+    decodeKeyValues(JNil, json)
+
+  /**
+   * Safely parses the given JSON input stream and starts emitting
+   * key-value pairs once the given JSON path is traversed.
+   *
+   * @tparam F effect type
+   * @tparam T type of the value that will be encoded
+   * @param path a path of object attributes that needs to be
+   *             traversed before the values can be emitted
+   * @param json the JSON as input stream
+   * @param d the `Decoder` instance of T
+   * @return
+   */
   def decodeKeyValues[F[_]: Sync, T](
     path: JsonPath,
     json: InputStream
@@ -75,5 +168,8 @@ private[ghyll] trait Decode {
 
   private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
     Resource.fromAutoCloseable(Sync[F].delay(new JsonReader(new InputStreamReader(json))))
+
+  private def fileInputStreamResource[F[_]: Sync](file: File): Resource[F, InputStream] =
+    Resource.fromAutoCloseable(Sync[F].delay(new FileInputStream(file)))
 
 }

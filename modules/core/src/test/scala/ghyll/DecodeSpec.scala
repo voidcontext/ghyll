@@ -133,6 +133,14 @@ class DecodeSpec extends AnyWordSpec with Matchers {
         )
       }
     }
+
+    "provide a shortcut to decode from file" in {
+      decodeObject[IO, Obj]("data" >:: "bar-2" >:: JNil, fileNested).use { result =>
+        IO.delay(
+          result should be(Right(Obj("bar2", None, Some(Data(BigDecimal.valueOf(1.9), Some(List("1", "2", "3")))))))
+        )
+      }
+    }
   }
 
   "decodeKeyValues" should {
@@ -166,6 +174,25 @@ class DecodeSpec extends AnyWordSpec with Matchers {
         )
 
       decodeKeyValues[IO, Obj]("data" >:: JNil, new FileInputStream(fileNested))
+        .use(
+          _.compile.toList.map {
+            _ should be(expected)
+          }
+        )
+        .unsafeRunSync()
+    }
+
+    "provide a shortcut to decode from file" in {
+
+      val expected =
+        List(
+          Right("foo" -> Obj("foo", Some(false), Some(Data(BigDecimal.valueOf(1L), None)))),
+          Right("bar" -> Obj("bar", None, Some(Data(BigDecimal.valueOf(1.9), Some(List.empty))))),
+          Right("bar-2" -> Obj("bar2", None, Some(Data(BigDecimal.valueOf(1.9), Some(List("1", "2", "3")))))),
+          Right("baz" -> Obj("baz", None, None))
+        )
+
+      decodeKeyValues[IO, Obj]("data" >:: JNil, fileNested)
         .use(
           _.compile.toList.map {
             _ should be(expected)
