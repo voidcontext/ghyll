@@ -46,6 +46,7 @@ lazy val core = (project in file("modules/core"))
   .settings(
     defaultSettings,
     publishSettings,
+    name := libraryName,
     libraryDependencies ++=
       Seq(
         "org.typelevel"       %% "cats-core"      % catsVersion,
@@ -70,6 +71,12 @@ lazy val benchmark = (project in file("benchmark"))
   )
   .dependsOn(core)
   .enablePlugins(JavaAppPackaging)
+
+lazy val root = (project in file("."))
+  .settings(
+    skip in publish := true
+  )
+  .aggregate(core, benchmark)
 
 addCommandAlias("fmt", ";scalafix ;test:scalafix ;scalafmtAll ;scalafmtSbt")
 addCommandAlias("prePush", ";fmt ;clean ;reload ;test")
