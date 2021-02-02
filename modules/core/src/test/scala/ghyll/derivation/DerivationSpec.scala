@@ -1,9 +1,8 @@
 package ghyll.derivation
 
-import java.io.ByteArrayInputStream
-
 import cats.effect.IO
 import ghyll.Decoder
+import ghyll.Utils.createReader
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -44,14 +43,11 @@ class DerivationSpec extends AnyWordSpec with Matchers with Derivation {
     }
   }
 
-  def check[T: Decoder](expected: T, json: String) = {
-    ghyll
-      .decodeObject[IO, T](new ByteArrayInputStream(json.getBytes()))
-      .use { result =>
-        IO.delay(
-          result should be(Right(expected))
-        )
-      }
+  def check[T](expected: T, json: String)(implicit decoder: Decoder[T]) = {
+    createReader(json)
+      .use(reader => IO.delay(decoder.decode(reader)))
+      .map(_ should be(Right(expected)))
       .unsafeRunSync()
+
   }
 }

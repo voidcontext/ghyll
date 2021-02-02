@@ -23,6 +23,8 @@ val fs2Version = "2.4.6"
 val gsonVersion = "2.8.6"
 val scalaTestVersion = "3.2.3"
 val declineVersion = "1.3.0"
+val scalatestScalacheckVersion = "3.1.1.1"
+val scalaCheckVersion = "1.14.3"
 
 lazy val publishSettings = List(
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -47,12 +49,17 @@ lazy val core = (project in file("modules/core"))
     name := libraryName,
     libraryDependencies ++=
       Seq(
-        "org.typelevel"       %% "cats-core"      % catsVersion,
-        "org.typelevel"       %% "cats-effect"    % catsEffectVersion,
-        "co.fs2"              %% "fs2-core"       % fs2Version,
-        "com.google.code.gson" % "gson"           % gsonVersion,
-        "com.chuusai"          % "shapeless_2.13" % "2.3.3",
-        "org.scalatest"       %% "scalatest"      % scalaTestVersion % Test
+        "org.typelevel"       %% "cats-core"       % catsVersion,
+        "org.typelevel"       %% "cats-effect"     % catsEffectVersion,
+        "co.fs2"              %% "fs2-core"        % fs2Version,
+        "com.google.code.gson" % "gson"            % gsonVersion,
+        "com.chuusai"          % "shapeless_2.13"  % "2.3.3",
+        "io.circe"            %% "circe-core"      % circeVersion,
+        "io.circe"            %% "circe-generic"   % circeVersion,
+        "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
+        "org.scalatestplus"   %% "scalacheck-1-14" % scalatestScalacheckVersion % Test,
+        "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test,
+        "org.typelevel"       %% "claimant"        % "0.1.3"                    % Test
       )
   )
 

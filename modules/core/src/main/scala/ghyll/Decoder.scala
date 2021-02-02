@@ -5,7 +5,10 @@ import java.time.LocalDate
 import scala.annotation.tailrec
 
 import cats.syntax.either._
+import cats.syntax.eq._
+import cats.syntax.flatMap._
 import com.google.gson.stream.{JsonReader, JsonToken}
+import ghyll.gson.Implicits._
 
 trait Decoder[A] {
   def decode(reader: JsonReader): StreamingDecoderResult[A]
@@ -43,7 +46,7 @@ object Decoder {
 
       @tailrec
       def decodeItems(result: StreamingDecoderResult[List[A]]): StreamingDecoderResult[List[A]] =
-        if (reader.peek() == JsonToken.END_ARRAY) result
+        if (reader.peek() == JsonToken.END_ARRAY || result.isLeft) result
         // In the following expression we prepend all newly decoded
         // element to the list of already decoded items. With this
         // the list will be reversed, but from a performance
@@ -53,9 +56,32 @@ object Decoder {
 
       // To preserve the orignal order we need to reverse the list
       // here
-      val result = decodeItems(Right(List.empty)).map(_.reverse)
-      reader.endArray()
-      result
+      decodeItems(Right(List.empty))
+        .map(_.reverse)
+        .flatTap { _ =>
+          reader.endArray()
+          Right(())
+        }
+    }
+
+  implicit def mapDecoder[V](implicit valueDecoder: Decoder[V]): Decoder[Map[String, V]] =
+    reader => {
+      reader.beginObject()
+
+      @tailrec
+      def decodeKeyValues(result: StreamingDecoderResult[Map[String, V]]): StreamingDecoderResult[Map[String, V]] =
+        if (reader.peek() === JsonToken.END_OBJECT || result.isLeft) result
+        else {
+          val key = reader.nextName()
+          decodeKeyValues(
+            result.flatMap(m => valueDecoder.decode(reader).map(decoded => m + (key -> decoded)))
+          )
+        }
+
+      decodeKeyValues(Right(Map.empty)).flatTap { _ =>
+        reader.endObject()
+        Right(())
+      }
     }
 
   private def createDecoder[A](token: JsonToken)(decode: JsonReader => A): Decoder[A] =

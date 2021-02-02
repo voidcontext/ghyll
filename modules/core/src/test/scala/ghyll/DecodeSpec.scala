@@ -1,6 +1,6 @@
 package ghyll
 
-import java.io.{ByteArrayInputStream, File, FileInputStream}
+import java.io.{File, FileInputStream}
 
 import cats.effect.IO
 import ghyll.jsonpath._
@@ -26,105 +26,6 @@ class DecodeSpec extends AnyWordSpec with Matchers {
   val fileNested = new File("modules/core/src/test/resources/test-object.json")
 
   "decodeObject()" should {
-
-    "decode simple JSON (not nested)" when {
-
-      "there are only scalar values in the JSON" in {
-
-        decodeObject[IO, Foo](new ByteArrayInputStream("""{"bar": "foobar", "baz": 42}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(Foo("foobar", 42)))
-          )
-        }
-          .unsafeRunSync()
-      }
-
-      "field order is different" in {
-        decodeObject[IO, Foo](new ByteArrayInputStream("""{"baz": 42, "bar": "foobar"}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(Foo("foobar", 42)))
-          )
-        }
-          .unsafeRunSync()
-      }
-
-      "there are additional fields" in {
-
-        decodeObject[IO, Foo](new ByteArrayInputStream("""{"baz": 42,"foo": true, "bar": "foobar"}""".getBytes())).use {
-          result =>
-            IO.delay(
-              result should be(Right(Foo("foobar", 42)))
-            )
-        }
-          .unsafeRunSync()
-      }
-    }
-
-    "decode optional fields" when {
-
-      "it is not provided" in {
-
-        decodeObject[IO, FooOption](new ByteArrayInputStream("""{"baz": 42}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(FooOption(None, 42)))
-          )
-        }
-          .unsafeRunSync()
-      }
-
-      "it is provided" in {
-
-        decodeObject[IO, FooOption](new ByteArrayInputStream("""{"baz": 42, "bar": "It's here!"}""".getBytes())).use {
-          result =>
-            IO.delay(
-              result should be(Right(FooOption(Option("It's here!"), 42)))
-            )
-        }
-          .unsafeRunSync()
-      }
-
-      "provided value is null" in {
-        decodeObject[IO, FooOption](new ByteArrayInputStream("""{"baz": 42, "bar": null}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(FooOption(None, 42)))
-          )
-        }
-          .unsafeRunSync()
-      }
-    }
-
-    "decode a list" when {
-
-      "it's empty list" in {
-
-        decodeObject[IO, FooList](new ByteArrayInputStream("""{"bar": []}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(FooList(List())))
-          )
-        }
-          .unsafeRunSync()
-      }
-
-      "it's not empty" in {
-
-        decodeObject[IO, FooList](new ByteArrayInputStream("""{"bar": [5,4,3, 1, 2]}""".getBytes())).use { result =>
-          IO.delay(
-            result should be(Right(FooList(List(5, 4, 3, 1, 2))))
-          )
-        }
-          .unsafeRunSync()
-      }
-    }
-
-    "fail when a required field is missing" in {
-
-      decodeObject[IO, FooOption](new ByteArrayInputStream("""{"bar": "baz"}""".getBytes())).use { result =>
-        IO.delay(
-          result should be(a[Left[_, FooOption]])
-        )
-      }
-        .unsafeRunSync()
-    }
 
     "only decode the object under the given path" in {
       decodeObject[IO, Obj]("data" >:: "bar-2" >:: JNil, new FileInputStream(fileNested)).use { result =>
