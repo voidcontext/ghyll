@@ -84,4 +84,5 @@ lazy val root = (project in file("."))
   .aggregate(core, benchmark)
 
 addCommandAlias("fmt", ";scalafix ;test:scalafix ;scalafmtAll ;scalafmtSbt")
+addCommandAlias("fmtCheck", ";scalafixAll --check ;scalafmtCheckAll; scalafmtSbtCheck")
 addCommandAlias("prePush", ";fmt ;clean ;reload ;test")

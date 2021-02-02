@@ -2,7 +2,7 @@ package ghyll.derivation
 
 import ghyll.{StreamingDecoderError, StreamingDecoderResult, StreamingDecodingFailure}
 import shapeless._
-import shapeless.labelled.{field, FieldType}
+import shapeless.labelled.{FieldType, field}
 
 trait ReprMapper[A] {
   def fromMap(map: Map[String, Any]): Either[StreamingDecoderError, A]
