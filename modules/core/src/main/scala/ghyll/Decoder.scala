@@ -16,7 +16,6 @@ trait Decoder[A] {
   def map[B](f: A => B): Decoder[B] = reader => decode(reader).map(f)
 }
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 object Decoder {
   def apply[A](implicit ev: Decoder[A]) = ev
 
@@ -37,7 +36,7 @@ object Decoder {
 
   implicit def optionDecoder[A](implicit aDecoder: Decoder[A]): Decoder[Option[A]] =
     reader =>
-      if (reader.peek() == JsonToken.NULL) { reader.nextNull(); Right(None) }
+      if (reader.peek() === JsonToken.NULL) { reader.nextNull(); Right(None) }
       else aDecoder.decode(reader).map(Option(_))
 
   implicit def listDecoder[A](implicit aDecoder: Decoder[A]): Decoder[List[A]] =
@@ -46,7 +45,7 @@ object Decoder {
 
       @tailrec
       def decodeItems(result: StreamingDecoderResult[List[A]]): StreamingDecoderResult[List[A]] =
-        if (reader.peek() == JsonToken.END_ARRAY || result.isLeft) result
+        if (reader.peek() === JsonToken.END_ARRAY || result.isLeft) result
         // In the following expression we prepend all newly decoded
         // element to the list of already decoded items. With this
         // the list will be reversed, but from a performance
@@ -86,7 +85,7 @@ object Decoder {
 
   private def createDecoder[A](token: JsonToken)(decode: JsonReader => A): Decoder[A] =
     reader =>
-      if (reader.peek() == token)
+      if (reader.peek() === token)
         Either
           .catchNonFatal(decode(reader))
           .left
