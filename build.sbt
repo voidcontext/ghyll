@@ -54,8 +54,8 @@ lazy val core = (project in file("modules/core"))
         "co.fs2"              %% "fs2-core"        % fs2Version,
         "com.google.code.gson" % "gson"            % gsonVersion,
         "com.chuusai"          % "shapeless_2.13"  % "2.3.3",
-        "io.circe"            %% "circe-core"      % circeVersion,
-        "io.circe"            %% "circe-generic"   % circeVersion,
+        "io.circe"            %% "circe-core"      % circeVersion               % Test,
+        "io.circe"            %% "circe-generic"   % circeVersion               % Test,
         "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
         "org.scalatestplus"   %% "scalacheck-1-14" % scalatestScalacheckVersion % Test,
         "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test,
@@ -68,7 +68,7 @@ lazy val benchmark = (project in file("benchmark"))
     defaultSettings,
     skip in publish := true,
     libraryDependencies ++= Seq(
-      "com.monovore" %% "decline"        % "1.3.0",
+      "com.monovore" %% "decline"        % declineVersion,
       "com.monovore" %% "decline-effect" % declineVersion,
       "io.circe"     %% "circe-generic"  % circeVersion,
       "io.circe"     %% "circe-parser"   % circeVersion
