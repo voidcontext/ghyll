@@ -3,7 +3,7 @@ import xerial.sbt.Sonatype._
 val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
-val supportedScalaVersions = List("2.13.4", "3.0.0-RC1")
+val supportedScalaVersions = List("3.0.0-RC1", "2.13.4")
 
 ThisBuild / name := libraryName
 ThisBuild / organization := "com.gaborpihaj"
@@ -71,7 +71,7 @@ lazy val core = (project in file("modules/core"))
 
 lazy val benchmark = (project in file("benchmark"))
   .settings(
-    scalaVersion := "2.13.4",
+    crossScalaVersions := List("2.13.4"),
     defaultSettings,
     skip in publish := true,
     libraryDependencies ++= Seq(
@@ -86,7 +86,8 @@ lazy val benchmark = (project in file("benchmark"))
 
 lazy val root = (project in file("."))
   .settings(
-    skip in publish := true
+    skip in publish := true,
+    crossScalaVersions := Nil
   )
   .aggregate(core, benchmark)
 
