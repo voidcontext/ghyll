@@ -54,4 +54,5 @@ object ReprMapper {
     t
       .fromMap(map)
       .map(tail => field[K](decoded.asInstanceOf[H]) :: tail) // TODO: Find a way to get rid of `asInstanceOf`
+
 }

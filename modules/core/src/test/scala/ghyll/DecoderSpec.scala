@@ -10,7 +10,6 @@ import org.scalacheck.{Arbitrary, Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
-import org.typelevel.claimant.Claim
 
 @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
@@ -28,7 +27,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
     createReader(value.asJson.toString).use { reader =>
       IO.delay(decoder.decode(reader))
     }
-      .map(decoded => Claim(decoded == Right(value)))
+      .map(decoded => (decoded == Right(value): Prop) :| s"expected: Right($value), got $decoded")
       .unsafeRunSync()
 
   "Decoder" should {

@@ -1,6 +1,7 @@
+addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.3")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat"        % "0.1.16")
 addSbtPlugin("org.scalameta"             % "sbt-scalafmt"        % "2.4.2")
-addSbtPlugin("ch.epfl.scala"             % "sbt-scalafix"        % "0.9.25")
+addSbtPlugin("ch.epfl.scala"             % "sbt-scalafix"        % "0.9.26")
 addSbtPlugin("com.dwijnand"              % "sbt-dynver"          % "4.1.1")
 addSbtPlugin("com.typesafe.sbt"          % "sbt-native-packager" % "1.8.0")
 addSbtPlugin("org.xerial.sbt"            % "sbt-sonatype"        % "3.9.5")

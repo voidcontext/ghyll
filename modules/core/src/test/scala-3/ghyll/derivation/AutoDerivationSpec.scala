@@ -6,31 +6,24 @@ import ghyll.Utils.createReader
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class DerivationSpec extends AnyWordSpec with Matchers with Derivation {
-  case class Foo(bar: String)
-  case class WrappedFoo(foo: Foo)
+class AutoDerivationSpec extends AnyWordSpec with Matchers {
+  // Todo change this so that Decoder can be derived directly
+  case class Foo(bar: String) derives DerivedDecoder
+  case class WrappedFoo(foo: Foo) derives DerivedDecoder
 
-  case class Response[A](data: A)
+  case class Response[A](data: A) derives DerivedDecoder
 
-  "deriveDecoder" should {
+  "deriving Decoder" should {
     "derive a valid decoder" when {
       "a case class has only scalar attributes" in {
-        implicit val decoder: Decoder[Foo] = deriveDecoder[Foo]
-
         check(Foo("baz"), """{"bar": "baz"}""")
       }
 
       "case classes are nested" in {
-        implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-        implicit val wrappedDecoder: Decoder[WrappedFoo] = deriveDecoder[WrappedFoo]
-
         check(WrappedFoo(Foo("baz")), """{"foo": {"bar": "baz"}}""")
       }
 
       "a case class has generic attributes" in {
-        implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-        implicit def responseDecoder[A: Decoder]: Decoder[Response[A]] = deriveDecoder
-
         check(Response(Foo("baz")), """{"data": {"bar": "baz"}}""")
       }
     }
