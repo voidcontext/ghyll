@@ -3,7 +3,8 @@ import xerial.sbt.Sonatype._
 val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
-val supportedScalaVersions = List("3.0.0-RC1", "2.13.4")
+val scala2 = "2.13.4"
+val supportedScalaVersions = List("3.0.0-RC1", scala2)
 
 ThisBuild / name := libraryName
 ThisBuild / organization := "com.gaborpihaj"
@@ -56,24 +57,25 @@ lazy val core = (project in file("modules/core"))
         "io.circe"            %% "circe-generic"   % circeVersion               % Test,
         "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
         "org.scalatestplus"   %% "scalacheck-1-15" % scalatestScalacheckVersion % Test,
-        "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test,
+        "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test
       ) ++
         (CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((2, _)) =>
             Seq(
-              "com.chuusai"          %% "shapeless"  % "2.3.3",
+              "com.chuusai" %% "shapeless" % "2.3.3",
               compilerPlugin(scalafixSemanticdb)
             )
-          case _ => Nil
+          case _            => Nil
         })
     }
   )
 
 lazy val benchmark = (project in file("benchmark"))
   .settings(
-    crossScalaVersions := List("2.13.4"),
+    crossScalaVersions := List(scala2),
     defaultSettings,
     skip in publish := true,
+    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
     libraryDependencies ++= Seq(
       "com.monovore" %% "decline"        % declineVersion,
       "com.monovore" %% "decline-effect" % declineVersion,
@@ -89,8 +91,19 @@ lazy val root = (project in file("."))
     skip in publish := true,
     crossScalaVersions := Nil
   )
-  .aggregate(core, benchmark)
+  .aggregate(core)
 
-addCommandAlias("fmt", ";scalafix ;test:scalafix ;scalafmtAll ;scalafmtSbt")
-addCommandAlias("fmtCheck", ";scalafixAll --check ;scalafmtCheckAll; scalafmtSbtCheck")
-addCommandAlias("prePush", ";fmt ;clean ;reload ;test")
+def versionCmd(scalaVersion: String)(cmd: String) =
+  s";++$scalaVersion $cmd"
+
+val fmtCommands =
+  List("scalafix", "test:scalafix", "scalafmtAll", "scalafmtSbt")
+    .map(versionCmd(scala2))
+
+val fmtCheckCommands =
+  List("scalafixAll --check", "scalafmtCheckAll", "scalafmtSbtCheck")
+    .map(versionCmd(scala2))
+
+addCommandAlias("fmt", fmtCommands.mkString(" "))
+addCommandAlias("fmtCheck", fmtCheckCommands.mkString(" "))
+addCommandAlias("prePush", ";fmt ;+ clean ;reload ;+ test")

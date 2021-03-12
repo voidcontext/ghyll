@@ -3,7 +3,7 @@
 BASEDIR=$(dirname $0)
 cd $BASEDIR
 
-sbt benchmark/stage
+sbt "++ 2.13.4 benchmark/stage"
 
 benchmark/target/universal/stage/bin/benchmark generate-sample
 echo "##############################################################"
