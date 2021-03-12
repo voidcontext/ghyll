@@ -93,17 +93,6 @@ lazy val root = (project in file("."))
   )
   .aggregate(core)
 
-def versionCmd(scalaVersion: String)(cmd: String) =
-  s";++$scalaVersion $cmd"
-
-val fmtCommands =
-  List("scalafix", "test:scalafix", "scalafmtAll", "scalafmtSbt")
-    .map(versionCmd(scala2))
-
-val fmtCheckCommands =
-  List("scalafixAll --check", "scalafmtCheckAll", "scalafmtSbtCheck")
-    .map(versionCmd(scala2))
-
-addCommandAlias("fmt", fmtCommands.mkString(" "))
-addCommandAlias("fmtCheck", fmtCheckCommands.mkString(" "))
+addCommandAlias("fmt", s"++ $scala2 ;scalafix ;test:scalafix ;scalafmtAll ;scalafmtSbt")
+addCommandAlias("fmtCheck", s"++ $scala2 ;scalafixAll --check ;scalafmtCheckAll; scalafmtSbtCheck")
 addCommandAlias("prePush", ";fmt ;+ clean ;reload ;+ test")
