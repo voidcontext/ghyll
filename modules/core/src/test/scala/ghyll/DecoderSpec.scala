@@ -1,12 +1,13 @@
 package ghyll
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 import cats.effect.IO
+import ghyll.Generators._
 import ghyll.Utils.createReader
 import io.circe.Encoder
 import io.circe.syntax._
-import org.scalacheck.{Arbitrary, Gen, Prop}
+import org.scalacheck.{Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
@@ -15,13 +16,6 @@ import org.scalatestplus.scalacheck.Checkers
 class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 500)
-
-  val string: Gen[String] = Gen.oneOf(Gen.asciiStr, Arbitrary.arbString.arbitrary)
-  val int: Gen[Int] = Arbitrary.arbInt.arbitrary
-  val boolean: Gen[Boolean] = Gen.oneOf(false, true)
-  val bigDecimal: Gen[BigDecimal] = Arbitrary.arbBigDecimal.arbitrary
-  val localDate: Gen[LocalDate] =
-    Arbitrary.arbDate.arbitrary.map(_.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
 
   def testDecoder[A: Encoder](value: A)(implicit decoder: Decoder[A]) =
     createReader(value.asJson.toString).use { reader =>

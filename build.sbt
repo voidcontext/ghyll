@@ -8,6 +8,7 @@ val supportedScalaVersions = List("3.0.0-RC1", scala2)
 
 ThisBuild / name := libraryName
 ThisBuild / organization := "com.gaborpihaj"
+ThisBuild / scalaVersion := scala2
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.4.3"
 ThisBuild / dynverSonatypeSnapshots := true
 ThisBuild / dynverSeparator := "-"
