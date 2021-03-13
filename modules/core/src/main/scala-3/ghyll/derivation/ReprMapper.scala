@@ -30,6 +30,4 @@ object ReprMapper:
         tailMapper.fromMap(map, fieldNames.tail).map { tail =>
            map.get(fieldNames.head).getOrElse(None).asInstanceOf[Option[A]] *: tail
         }
-   
-
 

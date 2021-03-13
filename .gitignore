@@ -1,4 +1,5 @@
 .bloop
+.core
 .metals
 result
 target/

@@ -26,7 +26,6 @@ trait DerivedDecoderInstances:
       case _: EmptyTuple => Nil
       case _: (t *: ts) => (inline constValue[t] match { case str : String => str }) :: getElemLabels[ts]
 
-
   inline given derived[A](using m: Mirror.Of[A]): DerivedDecoder[A] =
     new DerivedDecoder[A]:
       def decode(reader: JsonReader): StreamingDecoderResult[A] =

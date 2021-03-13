@@ -4,7 +4,8 @@ val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
 val scala2 = "2.13.4"
-val supportedScalaVersions = List("3.0.0-RC1", scala2)
+val scala3 = "3.0.0-RC1"
+val supportedScalaVersions = List(scala2, scala3)
 
 ThisBuild / name := libraryName
 ThisBuild / organization := "com.gaborpihaj"
@@ -42,33 +43,51 @@ lazy val defaultSettings = Seq(
   publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 )
 
+val coreSettings = Seq(
+  crossScalaVersions := supportedScalaVersions,
+  libraryDependencies ++= {
+    Seq(
+      "org.typelevel"       %% "cats-core"       % catsVersion,
+      "org.typelevel"       %% "cats-effect"     % catsEffectVersion,
+      "co.fs2"              %% "fs2-core"        % fs2Version,
+      "com.google.code.gson" % "gson"            % gsonVersion,
+      "io.circe"            %% "circe-core"      % circeVersion               % Test,
+      "io.circe"            %% "circe-generic"   % circeVersion               % Test,
+      "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
+      "org.scalatestplus"   %% "scalacheck-1-15" % scalatestScalacheckVersion % Test,
+      "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test
+    ) ++
+      (CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, _)) =>
+          Seq(
+            "com.chuusai" %% "shapeless" % "2.3.3",
+            compilerPlugin(scalafixSemanticdb)
+          )
+        case _            => Nil
+      })
+  }
+)
+
 lazy val core = (project in file("modules/core"))
   .settings(
     defaultSettings,
     publishSettings,
-    name := libraryName,
-    crossScalaVersions := supportedScalaVersions,
-    libraryDependencies ++= {
-      Seq(
-        "org.typelevel"       %% "cats-core"       % catsVersion,
-        "org.typelevel"       %% "cats-effect"     % catsEffectVersion,
-        "co.fs2"              %% "fs2-core"        % fs2Version,
-        "com.google.code.gson" % "gson"            % gsonVersion,
-        "io.circe"            %% "circe-core"      % circeVersion               % Test,
-        "io.circe"            %% "circe-generic"   % circeVersion               % Test,
-        "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
-        "org.scalatestplus"   %% "scalacheck-1-15" % scalatestScalacheckVersion % Test,
-        "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test
-      ) ++
-        (CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((2, _)) =>
-            Seq(
-              "com.chuusai" %% "shapeless" % "2.3.3",
-              compilerPlugin(scalafixSemanticdb)
-            )
-          case _            => Nil
-        })
-    }
+    coreSettings,
+    name := libraryName
+  )
+
+// This "phantom" module is for scala metals so that we can get code
+// completion / navigation in the scala 3 source too.
+lazy val core3 = project
+  .in(file(".core"))
+  .settings(
+    coreSettings,
+    scalaVersion := scala3,
+    skip in publish := true,
+    unmanagedSources.in(Compile) ++=
+      (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "main" / "scala") ::
+        (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "main" / "scala-3") ::
+        Nil
   )
 
 lazy val benchmark = (project in file("benchmark"))
