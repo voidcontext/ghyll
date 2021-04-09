@@ -7,7 +7,7 @@ import org.scalatest.compatible.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class DerviedDecoderSpec extends AnyWordSpec with Matchers {
+class DerivedDecoderSpec extends AnyWordSpec with Matchers {
   case class Foo(bar: String, baz: Int)
   val fooDecoder: DerivedDecoder[Foo] = implicitly[DerivedDecoder[Foo]]
 

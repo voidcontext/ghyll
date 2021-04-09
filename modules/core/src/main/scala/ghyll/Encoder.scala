@@ -9,6 +9,8 @@ import cats.syntax.functor._
 import com.google.gson.stream.JsonWriter
 
 trait Encoder[A] {
+  type For = A
+
   def encode(writer: JsonWriter, value: A): StreamingEncoderResult
 }
 
