@@ -2,7 +2,7 @@ import cats.instances.either._
 import cats.syntax.either._
 import cats.syntax.functor._
 
-package object ghyll extends DecodeFunctions {
+package object ghyll extends Decoding {
   type StreamingDecoderResult[A] = Either[StreamingDecoderError, A]
 
   object StreamingDecoderResult {

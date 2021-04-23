@@ -12,7 +12,7 @@ import fs2.Stream
 import ghyll.gson.Implicits._
 import ghyll.jsonpath._
 
-private[ghyll] trait DecodeFunctions {
+private[ghyll] trait Decoding {
   def decodeArray[F[_]: Sync, T: Decoder](json: InputStream): Resource[F, Stream[F, StreamingDecoderResult[T]]] = ???
 
   /**

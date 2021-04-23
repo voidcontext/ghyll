@@ -14,6 +14,8 @@ trait Encoder[A] {
 }
 
 object Encoder extends EncoderInstances {
+  def apply[A](implicit ev: Encoder[A]) = ev
+
   implicit val stringEncoder: Encoder[String] =
     (writer, value) => catchEncodingFailure(writer.value(value))
 
