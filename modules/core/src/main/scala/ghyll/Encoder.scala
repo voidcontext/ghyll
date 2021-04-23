@@ -13,7 +13,7 @@ trait Encoder[A] {
   def encode(writer: JsonWriter, value: A): StreamingEncoderResult
 }
 
-object Encoder {
+object Encoder extends EncoderInstances {
   implicit val stringEncoder: Encoder[String] =
     (writer, value) => catchEncodingFailure(writer.value(value))
 

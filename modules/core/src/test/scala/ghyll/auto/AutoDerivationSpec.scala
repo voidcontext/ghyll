@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll.{Codec, TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
@@ -12,12 +12,12 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
 
   "auto" should {
     "derive decoders automatically for case classes" in {
-      import ghyll.derivation.auto._
+      import ghyll.auto._
       testDecoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
     }
 
     "derive encoders automatically for case classes" in {
-      import ghyll.derivation.auto._
+      import ghyll.auto._
       testEncoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
     }
 
@@ -27,7 +27,7 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
         testEncoder(value, json)
       }
 
-      import ghyll.derivation.auto._
+      import ghyll.auto._
       test(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
     }
   }

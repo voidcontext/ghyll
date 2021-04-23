@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll._
 import org.scalatest.matchers.should.Matchers

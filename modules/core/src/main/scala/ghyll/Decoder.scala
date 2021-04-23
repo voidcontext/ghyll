@@ -15,7 +15,7 @@ trait Decoder[A] {
   def decode(reader: JsonReader): StreamingDecoderResult[A]
 }
 
-object Decoder {
+object Decoder extends DecoderInstances {
   def apply[A](implicit ev: Decoder[A]) = ev
 
   implicit val stringDecoder: Decoder[String] =

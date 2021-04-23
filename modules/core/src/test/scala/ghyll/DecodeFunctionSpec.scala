@@ -3,6 +3,7 @@ package ghyll
 import java.io.{File, FileInputStream}
 
 import cats.effect.IO
+import ghyll.auto.semi._
 import ghyll.jsonpath._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

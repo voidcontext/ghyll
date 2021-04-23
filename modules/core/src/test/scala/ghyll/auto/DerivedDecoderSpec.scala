@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import cats.effect.IO
 import ghyll.Utils.createReader

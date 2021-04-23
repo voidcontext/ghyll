@@ -1,9 +1,8 @@
 import cats.instances.either._
 import cats.syntax.either._
 import cats.syntax.functor._
-import ghyll.derivation.Derivation
 
-package object ghyll extends Derivation with DecodeFunctions {
+package object ghyll extends DecodeFunctions {
   type StreamingDecoderResult[A] = Either[StreamingDecoderError, A]
 
   object StreamingDecoderResult {

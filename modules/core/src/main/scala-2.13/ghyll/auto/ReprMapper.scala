@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll.{StreamingDecoderError, StreamingDecoderResult, StreamingDecodingFailure}
 import shapeless._

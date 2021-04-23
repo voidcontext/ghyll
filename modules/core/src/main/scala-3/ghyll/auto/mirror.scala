@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import scala.compiletime.{constValue, erasedValue}
 

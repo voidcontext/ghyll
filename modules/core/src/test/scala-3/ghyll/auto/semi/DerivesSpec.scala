@@ -1,28 +1,28 @@
-package ghyll.derivation
+package ghyll.auto.semi
 
 import cats.effect.IO
-import ghyll.{Codec, TestDecoder, TestEncoder}
+import ghyll._
 import ghyll.Utils.createReader
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class AutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder with TestEncoder {
+class DerivesSpec extends AnyWordSpec with Matchers with TestDecoder with TestEncoder {
   "deriving Decoder" should {
     "derive a valid decoder" when {
       "derive decoders automatically for case classes" in {
-        case class Foo(bar: String) derives DerivedDecoder
-        case class WrappedFoo(foo: Foo) derives DerivedDecoder
+        case class Foo(bar: String) derives Decoder
+        case class WrappedFoo(foo: Foo) derives Decoder
 
-        case class Response[A](data: A) derives DerivedDecoder
+        case class Response[A](data: A) derives Decoder
 
         testDecoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
       }
 
       "derive encoders automatically for case classes" in {
-        case class Foo(bar: String) derives DerivedEncoder
-        case class WrappedFoo(foo: Foo) derives DerivedEncoder
+        case class Foo(bar: String) derives Encoder
+        case class WrappedFoo(foo: Foo) derives Encoder
 
-        case class Response[A](data: A) derives DerivedEncoder
+        case class Response[A](data: A) derives Encoder
         testEncoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
       }
 

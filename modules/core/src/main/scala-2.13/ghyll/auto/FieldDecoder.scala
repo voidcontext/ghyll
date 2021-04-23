@@ -1,7 +1,7 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll.Decoder
-import ghyll.derivation.FieldDecoder.Field
+import ghyll.auto.FieldDecoder.Field
 
 // base idea from: https://stackoverflow.com/a/53438635
 private[ghyll] trait FieldDecoder[T] {

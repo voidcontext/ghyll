@@ -1,7 +1,7 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll.Decoder
-import ghyll.derivation.FieldDecoder.Field
+import ghyll.auto.FieldDecoder.Field
 import shapeless._
 import shapeless.labelled.FieldType
 

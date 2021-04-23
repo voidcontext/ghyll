@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import ghyll.{StreamingDecoderResult, StreamingDecodingFailure}
 import scala.compiletime.{constValue, erasedValue, summonInline}

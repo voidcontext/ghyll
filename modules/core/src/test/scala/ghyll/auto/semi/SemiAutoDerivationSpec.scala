@@ -1,10 +1,12 @@
-package ghyll.derivation
+package ghyll.auto.semi
 
 import ghyll.{Codec, Decoder, Encoder, TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class DerivationSpec extends AnyWordSpec with Matchers with Derivation with TestDecoder with TestEncoder {
+class DerivationSpec extends AnyWordSpec with Matchers with TestDecoder with TestEncoder {
+  import ghyll.auto.semi._
+
   case class Foo(bar: String)
   case class WrappedFoo(foo: Foo)
 

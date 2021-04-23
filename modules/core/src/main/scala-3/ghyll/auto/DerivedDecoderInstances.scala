@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import cats.syntax.eq._
 import com.google.gson.stream.{JsonReader, JsonToken}
@@ -21,7 +21,7 @@ trait DerivedDecoderInstances:
           type Out = t
           val d = summonInline[Decoder[t]]) :: summonAll[ts]
 
-  inline given derived[A](using m: Mirror.Of[A]): DerivedDecoder[A] =
+  inline given derivedDecoder[A](using m: Mirror.Of[A]): DerivedDecoder[A] =
     new DerivedDecoder[A]:
       def decode(reader: JsonReader): StreamingDecoderResult[A] =
         inline m match

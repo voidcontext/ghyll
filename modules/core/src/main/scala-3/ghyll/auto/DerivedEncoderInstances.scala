@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import scala.deriving.Mirror
 import ghyll.{Encoder, StreamingEncodingFailure, StreamingEncoderResult}
@@ -16,7 +16,7 @@ trait DerivedEncoderInstances:
       case _: EmptyTuple => Nil
       case _: (t *: ts) => summonInline[Encoder[t]] :: summonInstances[ts]
 
-  inline given derived[A](using m: Mirror.Of[A]): DerivedEncoder[A] =
+  inline given derivedEncoder[A](using m: Mirror.Of[A]): DerivedEncoder[A] =
         new DerivedEncoder[A]:
           def encode(writer: JsonWriter, value: A): StreamingEncoderResult =
             inline m match

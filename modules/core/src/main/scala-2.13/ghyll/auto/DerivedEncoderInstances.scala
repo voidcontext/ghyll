@@ -1,4 +1,4 @@
-package ghyll.derivation
+package ghyll.auto
 
 import cats.instances.either._
 import cats.syntax.flatMap._
