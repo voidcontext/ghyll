@@ -1,8 +1,6 @@
 package ghyll.derivation
 
-import cats.effect.IO
-import ghyll.Decoder
-import ghyll.Utils.createReader
+import ghyll.{Decoder, Encoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -13,34 +11,41 @@ class DerivationSpec extends AnyWordSpec with Matchers with Derivation {
   case class Response[A](data: A)
 
   "deriveDecoder" should {
-    "derive a valid decoder" when {
+    "derive a decoder" when {
       "a case class has only scalar attributes" in {
-        implicit val decoder: Decoder[Foo] = deriveDecoder[Foo]
-
-        check(Foo("baz"), """{"bar": "baz"}""")
+        deriveDecoder[Foo] should be(a[Decoder[_]])
       }
 
       "case classes are nested" in {
         implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-        implicit val wrappedDecoder: Decoder[WrappedFoo] = deriveDecoder[WrappedFoo]
+        deriveDecoder[WrappedFoo] should be(a[Decoder[_]])
 
-        check(WrappedFoo(Foo("baz")), """{"foo": {"bar": "baz"}}""")
       }
 
       "a case class has generic attributes" in {
         implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-        implicit def responseDecoder[A: Decoder]: Decoder[Response[A]] = deriveDecoder
-
-        check(Response(Foo("baz")), """{"data": {"bar": "baz"}}""")
+        deriveDecoder[Response[Foo]] should be(a[Decoder[_]])
       }
     }
   }
 
-  def check[T](expected: T, json: String)(implicit decoder: Decoder[T]) = {
-    createReader(json)
-      .use(reader => IO.delay(decoder.decode(reader)))
-      .map(_ should be(Right(expected)))
-      .unsafeRunSync()
+  "deriveEncoder" should {
+    "derive an encoder" when {
+      "a case class has only scalar attributes" in {
+        deriveEncoder[Foo] should be(a[Encoder[_]])
+      }
 
+      "case classes are nested" in {
+        implicit val fooEncoder: Encoder[Foo] = deriveEncoder[Foo]
+        deriveEncoder[WrappedFoo] should be(a[Encoder[_]])
+
+      }
+
+      "a case class has generic attributes" in {
+        implicit val fooEncoder: Encoder[Foo] = deriveEncoder[Foo]
+        deriveEncoder[Response[Foo]] should be(a[Encoder[_]])
+      }
+    }
   }
+
 }

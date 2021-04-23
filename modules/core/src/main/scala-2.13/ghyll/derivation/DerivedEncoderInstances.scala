@@ -16,24 +16,24 @@ private[ghyll] trait DerivedEncoderInstances {
 
   implicit def derivedEncoderHCons[K <: Symbol, H, T <: HList](implicit
     witness: Witness.Aux[K],
-    headEncoder: Lazy[Encoder[H]],
+    headEncoder: Encoder[H],
     tailEncoder: DerivedEncoder[T]
   ): DerivedEncoder[FieldType[K, H] :: T] =
     new DerivedEncoder[FieldType[K, H] :: T] {
       def encode(writer: JsonWriter, value: FieldType[K, H] :: T): StreamingEncoderResult =
         catchEncodingFailure(writer.name(witness.value.name)) >>
-          headEncoder.value.encode(writer, value.head) >>
+          headEncoder.encode(writer, value.head) >>
           tailEncoder.encode(writer, value.tail)
     }
 
   implicit def derivedEncoderGeneric[A, H](implicit
     lg: LabelledGeneric.Aux[A, H],
-    hconsEncoder: Lazy[DerivedEncoder[H]]
+    hconsEncoder: DerivedEncoder[H]
   ): DerivedEncoder[A] =
     new DerivedEncoder[A] {
       def encode(writer: JsonWriter, value: A): StreamingEncoderResult =
         catchEncodingFailure(writer.beginObject()) >>
-          hconsEncoder.value.encode(writer, lg.to(value)) >>
+          hconsEncoder.encode(writer, lg.to(value)) >>
           catchEncodingFailure(writer.endObject())
     }
 }
