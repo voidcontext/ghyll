@@ -85,6 +85,10 @@ lazy val core3 = project
     unmanagedSources.in(Compile) ++=
       (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "main" / "scala") ::
         (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "main" / "scala-3") ::
+        Nil,
+    unmanagedSources.in(Test) ++=
+      (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "test" / "scala") ::
+        (baseDirectory.in(ThisBuild).value / "modules" / "core" / "src" / "test" / "scala-3") ::
         Nil
   )
 

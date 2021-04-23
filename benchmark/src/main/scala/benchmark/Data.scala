@@ -6,8 +6,8 @@ import java.util.UUID
 import scala.util.Random
 
 import cats.effect.Sync
-import io.circe.generic.semiauto.deriveCodec
-import io.circe.{Codec, Decoder, Encoder}
+import ghyll._
+import ghyll.auto.semi._
 
 object Data {
   case class PricePoint(date: LocalDate, price: BigDecimal)
@@ -21,10 +21,6 @@ object Data {
   }
 
   type DataSet = Map[String, Item]
-
-  object DataSet {
-    implicit val codec: Codec[DataSet] = Codec.from(Decoder.decodeMap[String, Item], Encoder.encodeMap[String, Item])
-  }
 
   private val r = Random
 

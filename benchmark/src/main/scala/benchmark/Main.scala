@@ -19,8 +19,9 @@ import cats.syntax.traverse._
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import ghyll._
+import ghyll.auto.semi._
+import ghyll.syntax._
 import io.circe.parser.{decode => circeDecode}
-import io.circe.syntax._
 
 object Main
     extends CommandIOApp(
@@ -62,19 +63,21 @@ object Main
       case GenerateSampleJson     =>
         Data
           .generate[IO]
-          .map(_.asJson.toString)
+          .flatMap(_.asJsonString[IO])
           .flatMap(json => IO.delay(Files.write(sampleFile, json.getBytes(StandardCharsets.UTF_8))))
           .as(ExitCode.Success)
       case BenchmarkCirce(rounds) =>
         (IO.delay(println("parse using circe")) >>
-          repeat(
+          repeat({
+            import io.circe.generic.auto._
             for {
               result       <- IO.delay(circeDecode[DataSet](Source.fromFile(sampleFile.toUri()).mkString))
               errorOrTotal <- IO.delay(result.map(totalPrice))
               _            <- IO.delay(println(errorOrTotal))
               mem          <- memoryUsage()
               _            <- printMemoryUsage(mem)
-            } yield mem,
+            } yield mem
+          },
             rounds
           ) >>= printMemoryStats).as(ExitCode.Success)
 
