@@ -6,7 +6,6 @@ import org.scalacheck.{Gen, Prop}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 20000)

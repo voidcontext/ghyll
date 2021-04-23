@@ -26,10 +26,8 @@ trait TestEncoder {
              |expevcted bytes: ${byteArrayToString(expected.getBytes(StandardCharsets.UTF_16))}"""".stripMargin
       }
       .unsafeRunSync()
-
   }
 
   def byteArrayToString(ba: Array[Byte]): String =
     ba.toList.map(_.toInt).toString()
-
 }

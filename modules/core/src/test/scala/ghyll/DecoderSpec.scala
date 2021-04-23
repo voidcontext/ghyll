@@ -10,17 +10,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.=="))
-class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
+class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecoder {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 500)
-
-  def testDecoder[A: Encoder](value: A, json: String)(implicit decoder: Decoder[A]) =
-    createReader(json).use { reader =>
-      IO.delay(decoder.decode(reader))
-    }
-      .map(decoded => (decoded == Right(value): Prop) :| s"expected: Right($value), got $decoded")
-      .unsafeRunSync()
 
   "Decoder" should {
     "decode a JSON" when {

@@ -13,8 +13,6 @@ import ghyll.gson.Implicits._
 
 trait Decoder[A] {
   def decode(reader: JsonReader): StreamingDecoderResult[A]
-
-  def map[B](f: A => B): Decoder[B] = reader => decode(reader).map(f)
 }
 
 object Decoder {

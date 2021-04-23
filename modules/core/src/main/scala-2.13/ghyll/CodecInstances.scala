@@ -1,0 +1,3 @@
+package ghyll
+
+trait CodecInstances

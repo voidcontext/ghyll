@@ -1,12 +1,10 @@
 package ghyll.derivation
 
-import cats.effect.IO
-import ghyll.Utils.createReader
-import ghyll.{Decoder, TestEncoder}
+import ghyll.{Codec, TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder {
+class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with TestDecoder {
   case class Foo(bar: String)
   case class WrappedFoo(foo: Foo)
 
@@ -15,20 +13,22 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder {
   "auto" should {
     "derive decoders automatically for case classes" in {
       import ghyll.derivation.auto._
-      checkDecoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
+      testDecoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
     }
 
     "derive encoders automatically for case classes" in {
       import ghyll.derivation.auto._
       testEncoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
     }
-  }
 
-  def checkDecoder[T](expected: T, json: String)(implicit decoder: Decoder[T]) = {
-    createReader(json)
-      .use(reader => IO.delay(decoder.decode(reader)))
-      .map(_ should be(Right(expected)))
-      .unsafeRunSync()
-  }
+    "derive codecs automatically for case classes" in {
+      def test[A: Codec](value: A, json: String) = {
+        testDecoder(value, json)
+        testEncoder(value, json)
+      }
 
+      import ghyll.derivation.auto._
+      test(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
+    }
+  }
 }
