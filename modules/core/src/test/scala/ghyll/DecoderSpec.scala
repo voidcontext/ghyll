@@ -4,9 +4,7 @@ import java.time.LocalDate
 
 import cats.effect.IO
 import ghyll.Generators._
-import ghyll.Utils.createReader
-import io.circe.Encoder
-import io.circe.syntax._
+import ghyll.Utils.{createReader, escape}
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -17,8 +15,8 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 500)
 
-  def testDecoder[A: Encoder](value: A)(implicit decoder: Decoder[A]) =
-    createReader(value.asJson.toString).use { reader =>
+  def testDecoder[A: Encoder](value: A, json: String)(implicit decoder: Decoder[A]) =
+    createReader(json).use { reader =>
       IO.delay(decoder.decode(reader))
     }
       .map(decoded => (decoded == Right(value): Prop) :| s"expected: Right($value), got $decoded")
@@ -29,7 +27,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is a String" in {
         check(
           Prop.forAll(string) { case (string) =>
-            testDecoder(Map("foo" -> string))
+            testDecoder(Map("foo" -> string), s"""{"foo":"${escape(string)}"}""")
           }
         )
       }
@@ -37,7 +35,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is an Int" in {
         check(
           Prop.forAll(int) { case (int) =>
-            testDecoder(Map("foo" -> int))
+            testDecoder(Map("foo" -> int), s"""{"foo":$int}""")
           }
         )
       }
@@ -45,7 +43,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is a Boolean" in {
         check(
           Prop.forAll(boolean) { case (bool) =>
-            testDecoder(Map("foo" -> bool))
+            testDecoder(Map("foo" -> bool), s"""{"foo":${if (bool) "true" else "false"}}""")
           }
         )
       }
@@ -53,7 +51,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is a BigDecimal" in {
         check(
           Prop.forAll(bigDecimal) { case (bigDecimal) =>
-            testDecoder(Map("foo" -> bigDecimal))
+            testDecoder(Map("foo" -> bigDecimal), s"""{"foo":${bigDecimal.toString()}}""")
           }
         )
       }
@@ -61,7 +59,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is a LocalDate" in {
         check(
           Prop.forAll(localDate) { case (localDate) =>
-            testDecoder(Map("foo" -> localDate))
+            testDecoder(Map("foo" -> localDate), s"""{"foo":"${localDate.toString()}"}""")
           }
         )
       }
@@ -69,7 +67,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is a List" in {
         check(
           Prop.forAll(Gen.listOf(int)) { case (ints) =>
-            testDecoder(Map("foo" -> ints))
+            testDecoder(Map("foo" -> ints), s"""{"foo":[${ints.map(_.toString()).mkString(",")}]}""")
           }
         )
       }
@@ -77,7 +75,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       "value is optional" in {
         check(
           Prop.forAll(Gen.option(int)) { case (maybeInt) =>
-            testDecoder(Map("foo" -> maybeInt))
+            testDecoder(Map("foo" -> maybeInt), s"""{"foo":${maybeInt.fold("null")(_.toString())}}""")
           }
         )
       }
@@ -85,8 +83,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
 
     "return an error result" when {
       "expected value is a String, but got something else" in {
-        val value = Map("foo" -> 1)
-        createReader(value.asJson.toString).use { reader =>
+        createReader("""{"foo":1}""").use { reader =>
           IO.delay(Decoder[Map[String, String]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Expected STRING, but got NUMBER"))))
@@ -94,43 +91,38 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
       }
 
       "expected value is a Int, but got something else" in {
-        val value = Map("foo" -> Map.empty[String, String])
-        createReader(value.asJson.toString).use { reader =>
+        createReader("""{"foo": {}}""").use { reader =>
           IO.delay(Decoder[Map[String, Int]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got BEGIN_OBJECT"))))
           .unsafeRunSync()
       }
       "expected value is a Boolean, but got something else" in {
-        val value = Map("foo" -> 1)
-        createReader(value.asJson.toString).use { reader =>
+        createReader("""{"foo": 1}"""").use { reader =>
           IO.delay(Decoder[Map[String, Boolean]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Expected BOOLEAN, but got NUMBER"))))
           .unsafeRunSync()
       }
       "expected value can be converted to BigDecimal, but got something else" in {
-        val value = Map("foo" -> "something else")
-        createReader(value.asJson.toString).use { reader =>
+        createReader("""{"foo": "something else"}""").use { reader =>
           IO.delay(Decoder[Map[String, BigDecimal]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got STRING"))))
           .unsafeRunSync()
       }
       "expected value is a LocalDate, but got something else" in {
-        val value = Map("foo" -> "tomorrow")
-        createReader(value.asJson.toString).use { reader =>
+        createReader("""{"foo": "tomorrow"}""").use { reader =>
           IO.delay(Decoder[Map[String, LocalDate]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Text 'tomorrow' could not be parsed at index 0"))))
           .unsafeRunSync()
       }
       "expected value is a List, but got something else" in {
-        val value = Map("foo" -> Map.empty[String, String])
-        createReader(value.asJson.toString).use { reader =>
-          IO.delay(Decoder[Map[String, Int]].decode(reader))
+        createReader("""{"foo": {}}""").use { reader =>
+          IO.delay(Decoder[Map[String, List[Int]]].decode(reader))
         }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got BEGIN_OBJECT"))))
+          .map(_ should be(Left(StreamingDecodingFailure("Expected BEGIN_ARRAY, but got BEGIN_OBJECT"))))
           .unsafeRunSync()
       }
       "expected value is a List, but not all item has the same type" in {
@@ -138,6 +130,14 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers {
           IO.delay(Decoder[Map[String, List[Int]]].decode(reader))
         }
           .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got STRING"))))
+          .unsafeRunSync()
+      }
+
+      "expected value is a Map, but got something else" in {
+        createReader("""{"foo": []}""").use { reader =>
+          IO.delay(Decoder[Map[String, Map[String, Int]]].decode(reader))
+        }
+          .map(_ should be(Left(StreamingDecodingFailure("Expected BEGIN_OBJECT, but got BEGIN_ARRAY"))))
           .unsafeRunSync()
       }
 

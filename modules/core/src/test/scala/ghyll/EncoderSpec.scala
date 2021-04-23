@@ -1,6 +1,7 @@
 package ghyll
 
 import ghyll.Generators._
+import ghyll.Utils.escape
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
@@ -9,31 +10,6 @@ import org.scalatestplus.scalacheck.Checkers
 class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 20000)
-
-  def escape(str: String): String =
-    """\p{Cntrl}""".r
-      .replaceAllIn(
-        str.replaceAll("\\\\", """\\\\"""),
-        { m =>
-          m.matched
-            .codePoints()
-            .toArray()
-            .toList
-            .map {
-              case bs if bs == 8  => "\\\\b"
-              case bs if bs == 9  => "\\\\t"
-              case bs if bs == 10 => "\\\\n"
-              case bs if bs == 12 => "\\\\f"
-              case bs if bs == 13 => "\\\\r"
-              case i if i == 127  => i.toChar
-              case i              => "\\\\u%04x".format(i)
-            }
-            .mkString
-        }
-      )
-      .replaceAll("\"", "\\\\\"")
-      .replaceAll("\u2028", "\\\\u2028")
-      .replaceAll("\u2029", "\\\\u2029")
 
   "Encoder" should {
     "encode json" when {

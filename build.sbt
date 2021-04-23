@@ -51,8 +51,6 @@ val coreSettings = Seq(
       "org.typelevel"       %% "cats-effect"     % catsEffectVersion,
       "co.fs2"              %% "fs2-core"        % fs2Version,
       "com.google.code.gson" % "gson"            % gsonVersion,
-      "io.circe"            %% "circe-core"      % circeVersion               % Test,
-      "io.circe"            %% "circe-generic"   % circeVersion               % Test,
       "org.scalatest"       %% "scalatest"       % scalaTestVersion           % Test,
       "org.scalatestplus"   %% "scalacheck-1-15" % scalatestScalacheckVersion % Test,
       "org.scalacheck"      %% "scalacheck"      % scalaCheckVersion          % Test
