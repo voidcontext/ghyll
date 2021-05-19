@@ -25,4 +25,4 @@ jobs:
     - name: Run tests - Scala 2.13
       run: sbt "++ 2.13.4 ;fmtCheck ;test"
     - name: Run tests - Scala 3.0
-      run: sbt "++ 3.0.0-RC1 test"
+      run: sbt "++ 3.0.0 test"
