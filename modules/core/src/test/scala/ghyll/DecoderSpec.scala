@@ -3,6 +3,7 @@ package ghyll
 import java.time.LocalDate
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import ghyll.Generators._
 import ghyll.Utils.{createReader, escape}
 import org.scalacheck.{Gen, Prop}

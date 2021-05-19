@@ -3,6 +3,7 @@ package ghyll
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 
+import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, Resource}
 import cats.instances.byte._
 import cats.instances.list._

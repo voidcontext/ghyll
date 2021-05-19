@@ -22,11 +22,11 @@ ThisBuild / publishLocalConfiguration := publishLocalConfiguration.value.withOve
 
 val circeVersion = "0.14.0-M4"
 val catsVersion = "2.6.1"
-val catsEffectVersion = "2.5.1"
-val fs2Version = "2.5.6"
+val catsEffectVersion = "3.1.1"
+val fs2Version = "3.0.3"
 val gsonVersion = "2.8.6"
 val scalaTestVersion = "3.2.9"
-val declineVersion = "1.3.0"
+val declineVersion = "2.0.0"
 val scalatestScalacheckVersion = "3.2.9.0"
 val scalaCheckVersion = "1.15.4"
 

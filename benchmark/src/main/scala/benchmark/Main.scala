@@ -31,7 +31,7 @@ object Main
 
   val sampleFile = Paths.get("benchmark/generated.json")
   val mb = 1024 * 1024
-  val runtime = Runtime.getRuntime
+  val javaRuntime = Runtime.getRuntime
 
   def findLatestPrice(prices: List[PricePoint]): BigDecimal =
     prices
@@ -45,7 +45,7 @@ object Main
     dataset.values.foldLeft(BigDecimal.valueOf(0))((sum, item) => sum + findLatestPrice(item.prices))
 
   def memoryUsage(): IO[Long] =
-    IO.delay((runtime.totalMemory() - runtime.freeMemory()) / mb)
+    IO.delay((javaRuntime.totalMemory() - javaRuntime.freeMemory()) / mb)
 
   def printMemoryUsage(m: Long): IO[Unit] =
     IO.delay(println(s"Current memory usage: ${m}"))

@@ -1,6 +1,7 @@
 package ghyll.auto
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import ghyll.Utils.createReader
 import ghyll._
 import org.scalatest.compatible.Assertion
