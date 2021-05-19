@@ -16,21 +16,17 @@ trait DerivedEncoderInstances:
       case _: EmptyTuple => Nil
       case _: (t *: ts) => summonInline[Encoder[t]] :: summonInstances[ts]
 
-  inline given derivedEncoder[A](using m: Mirror.Of[A]): DerivedEncoder[A] =
+  inline given derivedEncoder[A](using m: Mirror.ProductOf[A]): DerivedEncoder[A] =
         new DerivedEncoder[A]:
           def encode(writer: JsonWriter, value: A): StreamingEncoderResult =
-            inline m match
-              case s: Mirror.ProductOf[A] =>
-                val elemInstances = summonInstances[s.MirroredElemTypes]
+            val elemInstances = summonInstances[m.MirroredElemTypes]
 
-                catchEncodingFailure(writer.beginObject) >>
-                  getElemLabels[s.MirroredElemLabels]
-                    .zip(elemInstances)
-                    .zip(value.asInstanceOf[Product].productIterator)
-                    .foldLeft[StreamingEncoderResult](Right(())) { case (acc, ((label, encoder), vvalue)) =>
-                      acc >> catchEncodingFailure(writer.name(label)) >> encoder.encode(writer, vvalue.asInstanceOf[encoder.For])
-                    } >>
-                      catchEncodingFailure(writer.endObject)
-
-              case _ => Left(StreamingEncodingFailure("unimplemented"))
+            catchEncodingFailure(writer.beginObject) >>
+              getElemLabels[m.MirroredElemLabels]
+                .zip(elemInstances)
+                .zip(value.asInstanceOf[Product].productIterator)
+                .foldLeft[StreamingEncoderResult](Right(())) { case (acc, ((label, encoder), vvalue)) =>
+                  acc >> catchEncodingFailure(writer.name(label)) >> encoder.encode(writer, vvalue.asInstanceOf[encoder.For])
+                } >>
+                  catchEncodingFailure(writer.endObject)
 

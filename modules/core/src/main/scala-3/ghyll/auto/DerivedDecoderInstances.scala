@@ -21,45 +21,42 @@ trait DerivedDecoderInstances:
           type Out = t
           val d = summonInline[Decoder[t]]) :: summonAll[ts]
 
-  inline given derivedDecoder[A](using m: Mirror.Of[A]): DerivedDecoder[A] =
+  inline given derivedDecoder[A](using m: Mirror.ProductOf[A]): DerivedDecoder[A] =
     new DerivedDecoder[A]:
       def decode(reader: JsonReader): StreamingDecoderResult[A] =
-        inline m match
-          case s: Mirror.ProductOf[A] =>
-            lazy val elemLabels = getElemLabels[m.MirroredElemLabels]
-            lazy val fieldDecoders =
-              elemLabels.zip(summonAll[s.MirroredElemTypes]).toMap
+        lazy val elemLabels = getElemLabels[m.MirroredElemLabels]
+        lazy val fieldDecoders =
+          elemLabels.zip(summonAll[m.MirroredElemTypes]).toMap
 
-            reader.beginObject()
+        reader.beginObject()
 
-            @tailrec
-            def decodeKeys(result: StreamingDecoderResult[Map[String, Any]]): StreamingDecoderResult[Map[String, Any]] =
-              if (reader.peek() === JsonToken.END_OBJECT) result
-              else
-                val name = reader.nextName()
-                fieldDecoders.get(name) match
-                  case None        =>
-                    reader.skipValue()
-                    decodeKeys(result)
-                  case Some(field) =>
-                    decodeKeys(
-                      for {
-                        r       <- result
-                        decoded <- field.d.decode(reader)
-                      } yield r + (name -> decoded)
-                    )
+        @tailrec
+        def decodeKeys(result: StreamingDecoderResult[Map[String, Any]]): StreamingDecoderResult[Map[String, Any]] =
+          if (reader.peek() === JsonToken.END_OBJECT) result
+          else
+            val name = reader.nextName()
+            fieldDecoders.get(name) match
+              case None        =>
+                reader.skipValue()
+                decodeKeys(result)
+              case Some(field) =>
+                decodeKeys(
+                  for {
+                    r       <- result
+                    decoded <- field.d.decode(reader)
+                  } yield r + (name -> decoded)
+                )
 
-            val decoded = decodeKeys(Right(Map.empty))
-            skipRemainingKeys(reader)
-            reader.endObject()
+        val decoded = decodeKeys(Right(Map.empty))
+        skipRemainingKeys(reader)
+        reader.endObject()
 
 
-            decoded.flatMap { m =>
-              summonInline[ReprMapper[s.MirroredElemTypes]]
-                .fromMap(m, elemLabels)
-                .map(s.fromProduct)
-            }
-          case _ => Left(StreamingDecodingFailure("error"))
+        decoded.flatMap { map =>
+          summonInline[ReprMapper[m.MirroredElemTypes]]
+            .fromMap(map, elemLabels)
+            .map(m.fromProduct)
+        }
 
   @SuppressWarnings(Array("scalafix:DisableSyntax.while"))
   @inline private[this] def skipRemainingKeys(reader: JsonReader): Unit =

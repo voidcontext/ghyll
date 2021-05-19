@@ -4,7 +4,7 @@ val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
 val scala2 = "2.13.4"
-val scala3 = "3.0.0-RC1"
+val scala3 = "3.0.0"
 val supportedScalaVersions = List(scala2, scala3)
 
 ThisBuild / name := libraryName
@@ -21,14 +21,14 @@ ThisBuild / publishConfiguration := publishConfiguration.value.withOverwrite(tru
 ThisBuild / publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 
 val circeVersion = "0.14.0-M4"
-val catsVersion = "2.4.2"
-val catsEffectVersion = "2.3.2"
-val fs2Version = "2.5.3"
+val catsVersion = "2.6.1"
+val catsEffectVersion = "2.5.1"
+val fs2Version = "2.5.6"
 val gsonVersion = "2.8.6"
-val scalaTestVersion = "3.2.5"
+val scalaTestVersion = "3.2.9"
 val declineVersion = "1.3.0"
-val scalatestScalacheckVersion = "3.2.5.0"
-val scalaCheckVersion = "1.15.3"
+val scalatestScalacheckVersion = "3.2.9.0"
+val scalaCheckVersion = "1.15.4"
 
 lazy val publishSettings = List(
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
