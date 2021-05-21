@@ -2,89 +2,103 @@ package ghyll
 
 import java.time.LocalDate
 
-import scala.annotation.tailrec
+import scala.reflect.ClassTag
 
-import cats.instances.either._
-import cats.syntax.eq._
-import cats.syntax.flatMap._
-import com.google.gson.stream.{JsonReader, JsonToken}
-import ghyll.StreamingDecoderResult.catchDecodingFailure
-import ghyll.gson.Implicits._
+import cats.syntax.either._
+import fs2.Stream
+import ghyll.json.JsonToken
+import ghyll.json.JsonToken.TokenName
 
-trait Decoder[A] {
-  def decode(reader: JsonReader): StreamingDecoderResult[A]
+trait Decoder[F[_], A] {
+  def decode(stream: TokenStream[F]): StreamingDecoderResult[F, A]
 }
 
 object Decoder extends DecoderInstances {
-  def apply[A](implicit ev: Decoder[A]) = ev
+  def apply[F[_], A](implicit ev: Decoder[F, A]) = ev
 
-  implicit val stringDecoder: Decoder[String] =
-    createDecoder[String](JsonToken.STRING)(_.nextString())
+  implicit def stringDecoder[F[_]]: Decoder[F, String] =
+    createDecoder[F, String, JsonToken.Str] { case JsonToken.Str(v) => Right(v) }
 
-  implicit val intDecoder: Decoder[Int] =
-    createDecoder[Int](JsonToken.NUMBER)(_.nextInt())
+  implicit def intDecoder[F[_]]: Decoder[F, Int] =
+    createDecoder[F, Int, JsonToken.Number] { case JsonToken.Number(v) => Right(v.toInt) }
 
-  implicit val booleanDecoder: Decoder[Boolean] =
-    createDecoder[Boolean](JsonToken.BOOLEAN)(_.nextBoolean())
+  implicit def booleanDecoder[F[_]]: Decoder[F, Boolean] =
+    createDecoder[F, Boolean, JsonToken.Boolean] { case JsonToken.Boolean(v) => Right(v) }
 
-  implicit val bigDecimalDecoder: Decoder[BigDecimal] =
-    createDecoder[BigDecimal](JsonToken.NUMBER)(r => BigDecimal(r.nextString()))
+  implicit def bigDecimalDecoder[F[_]]: Decoder[F, BigDecimal] =
+    createDecoder[F, BigDecimal, JsonToken.Number] { case JsonToken.Number(v) => Right(BigDecimal(v)) }
 
-  implicit val localDateDecoder: Decoder[LocalDate] =
-    createDecoder[LocalDate](JsonToken.STRING)(r => LocalDate.parse(r.nextString()))
+  implicit def localDateDecoder[F[_]]: Decoder[F, LocalDate] =
+    createDecoder[F, LocalDate, JsonToken.Str] { case JsonToken.Str(v) => catchDecodingFailure(LocalDate.parse(v)) }
 
-  implicit def optionDecoder[A](implicit aDecoder: Decoder[A]): Decoder[Option[A]] =
-    reader =>
-      if (reader.peek() === JsonToken.NULL) { reader.nextNull(); Right(None) }
-      else aDecoder.decode(reader).map(Option(_))
+  implicit def optionDecoder[F[_], A](implicit aDecoder: Decoder[F, A]): Decoder[F, Option[A]] =
+    stream =>
+      stream.head.flatMap {
+        case JsonToken.Null => Stream.emit(Right(Option.empty[A] -> stream.tail))
+        case _              => aDecoder.decode(stream).map(_.map { case (a, s) => Some(a) -> s })
+      }
 
-  implicit def listDecoder[A](implicit aDecoder: Decoder[A]): Decoder[List[A]] =
-    reader => {
-      @tailrec
-      def decodeItems(result: StreamingDecoderResult[List[A]]): StreamingDecoderResult[List[A]] =
-        if (reader.peek() === JsonToken.END_ARRAY || result.isLeft) result
-        // In the following expression we prepend all newly decoded
-        // element to the list of already decoded items. With this
-        // the list will be reversed, but from a performance
-        // perspective it's still better to prepend then reverse at
-        // the and than appending to the list
-        else decodeItems(result.flatMap(list => aDecoder.decode(reader).map(_ :: list)))
-
-      withToken(reader, JsonToken.BEGIN_ARRAY)(_.beginArray()) >>
-        // To preserve the orignal order we need to reverse the list
-        // here
-        decodeItems(Right(List.empty))
-          .map(_.reverse)
-          .flatTap { _ =>
-            reader.endArray()
-            Right(())
+  implicit def listDecoder[F[_], A](implicit aDecoder: Decoder[F, A]): Decoder[F, List[A]] =
+    stream =>
+      withExpected[F, List[A], JsonToken.BeginArray](stream) { case (_: JsonToken.BeginArray, tail) =>
+        def decodeNext(s: StreamingDecoderResult[F, List[A]]): StreamingDecoderResult[F, List[A]] =
+          s.flatMap {
+            _ match {
+              case Right((xs, str)) =>
+                str.head.flatMap {
+                  case JsonToken.EndArray => Stream.emit(Right(xs.reverse -> str.tail))
+                  case _                  => decodeNext(aDecoder.decode(str).map(_.map { case (a, s) => (a :: xs) -> s }))
+                }
+              case e @ Left(_)      => Stream.emit(e)
+            }
           }
+        decodeNext(Stream.emit(Right(List.empty[A] -> tail)))
+
+      }
+
+  implicit def mapDecoder[F[_], V](implicit valueDecoder: Decoder[F, V]): Decoder[F, Map[String, V]] =
+    stream =>
+      withExpected[F, Map[String, V], JsonToken.BeginObject](stream) { case (_: JsonToken.BeginObject, tail) =>
+        def decodeNext(s: StreamingDecoderResult[F, Map[String, V]]): StreamingDecoderResult[F, Map[String, V]] =
+          s.flatMap {
+            _ match {
+              case Right((map, str)) =>
+                str.head.flatMap {
+                  case JsonToken.EndObject => Stream.emit(Right(map -> str.tail))
+                  case JsonToken.Key(name) =>
+                    decodeNext(valueDecoder.decode(str.tail).map(_.map { case (a, s) => map + (name -> a) -> s }))
+                  case t                   => Stream.emit(Left(StreamingDecodingFailure(s"Unexpected token: ${TokenName(t).show()}")))
+                }
+              case e @ Left(_)       => Stream.emit(e)
+            }
+          }
+        decodeNext(Stream.emit(Right(Map.empty[String, V] -> tail)))
+      }
+
+  private def createDecoder[F[_], A, Token <: JsonToken: ClassTag](
+    pf: Token => Either[StreamingDecoderError, A]
+  )(implicit tn: TokenName[Token]): Decoder[F, A] =
+    withExpected[F, A, Token](_) { case (token: Token, tail) =>
+      Stream.emit(pf(token).map(_ -> tail)).covary[F]
     }
 
-  implicit def mapDecoder[V](implicit valueDecoder: Decoder[V]): Decoder[Map[String, V]] =
-    reader => {
-      @tailrec
-      def decodeKeyValues(result: StreamingDecoderResult[Map[String, V]]): StreamingDecoderResult[Map[String, V]] =
-        if (reader.peek() === JsonToken.END_OBJECT || result.isLeft) result
-        else {
-          val key = reader.nextName()
-          decodeKeyValues(
-            result.flatMap(m => valueDecoder.decode(reader).map(decoded => m + (key -> decoded)))
-          )
-        }
+  private[ghyll] def withExpected[F[_], A, Token <: JsonToken: TokenName](
+    stream: Stream[F, JsonToken]
+  )(
+    pf: PartialFunction[(JsonToken, Stream[F, JsonToken]), StreamingDecoderResult[F, A]]
+  ): StreamingDecoderResult[F, A] =
+    stream.head.flatMap(token => pf.orElse(expected[F, A, Token].compose(dropStream))(token -> stream.tail))
 
-      withToken(reader, JsonToken.BEGIN_OBJECT)(_.beginObject()) >>
-        decodeKeyValues(Right(Map.empty)).flatTap { _ =>
-          reader.endObject()
-          Right(())
-        }
-    }
+  private def dropStream[F[_], A, Token <: JsonToken]: PartialFunction[(JsonToken, Stream[F, JsonToken]), JsonToken] = {
+    case (t, _) => t
+  }
 
-  private def withToken[A](reader: JsonReader, token: JsonToken)(f: JsonReader => A): StreamingDecoderResult[A] =
-    if (reader.peek() === token) catchDecodingFailure(f(reader))
-    else Left(StreamingDecodingFailure(s"Expected ${token}, but got ${reader.peek()}"))
+  private def expected[F[_], A, Token <: JsonToken: TokenName]
+    : PartialFunction[JsonToken, StreamingDecoderResult[F, A]] = { case t =>
+    Stream.emit(Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()}, but got ${TokenName(t).show()}")))
+  }
 
-  private def createDecoder[A](token: JsonToken)(decode: JsonReader => A): Decoder[A] =
-    reader => withToken(reader, token)(decode)
+  private def catchDecodingFailure[A](body: => A): Either[StreamingDecoderError, A] =
+    Either.catchNonFatal(body).left.map[StreamingDecoderError](t => StreamingDecodingFailure(t.getMessage()))
 
 }

@@ -1,11 +1,15 @@
 package ghyll
 
+// import java.time.LocalDate
+
+// import cats.effect.IO
+// import cats.effect.unsafe.implicits.global
 import java.time.LocalDate
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
+import fs2.Stream
 import ghyll.Generators._
-import ghyll.Utils.{createReader, escape}
+import ghyll.json.JsonToken
+import ghyll.json.JsonToken.TokenName
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -20,7 +24,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is a String" in {
         check(
           Prop.forAll(string) { case (string) =>
-            testDecoder(Map("foo" -> string), s"""{"foo":"${escape(string)}"}""")
+            testDecoder(string, Stream.emit(JsonToken.Str(string)))
           }
         )
       }
@@ -28,7 +32,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is an Int" in {
         check(
           Prop.forAll(int) { case (int) =>
-            testDecoder(Map("foo" -> int), s"""{"foo":$int}""")
+            testDecoder(int, Stream.emit(JsonToken.Number(int.toString())))
           }
         )
       }
@@ -36,7 +40,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is a Boolean" in {
         check(
           Prop.forAll(boolean) { case (bool) =>
-            testDecoder(Map("foo" -> bool), s"""{"foo":${if (bool) "true" else "false"}}""")
+            testDecoder(bool, Stream.emit(JsonToken.Boolean(bool)))
           }
         )
       }
@@ -44,7 +48,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is a BigDecimal" in {
         check(
           Prop.forAll(bigDecimal) { case (bigDecimal) =>
-            testDecoder(Map("foo" -> bigDecimal), s"""{"foo":${bigDecimal.toString()}}""")
+            testDecoder(bigDecimal, Stream.emit(JsonToken.Number(bigDecimal.toString())))
           }
         )
       }
@@ -52,15 +56,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is a LocalDate" in {
         check(
           Prop.forAll(localDate) { case (localDate) =>
-            testDecoder(Map("foo" -> localDate), s"""{"foo":"${localDate.toString()}"}""")
-          }
-        )
-      }
-
-      "value is a List" in {
-        check(
-          Prop.forAll(Gen.listOf(int)) { case (ints) =>
-            testDecoder(Map("foo" -> ints), s"""{"foo":[${ints.map(_.toString()).mkString(",")}]}""")
+            testDecoder(localDate, Stream.emit(JsonToken.Str(localDate.toString())))
           }
         )
       }
@@ -68,79 +64,130 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is optional" in {
         check(
           Prop.forAll(Gen.option(int)) { case (maybeInt) =>
-            testDecoder(Map("foo" -> maybeInt), s"""{"foo":${maybeInt.fold("null")(_.toString())}}""")
+            testDecoder(
+              maybeInt,
+              Stream.emit(maybeInt.fold[JsonToken](JsonToken.Null)(i => JsonToken.Number(i.toString)))
+            )
           }
         )
       }
+
+      "value is a List" in {
+        check(
+          Prop.forAll(Gen.listOf(int)) { case (ints) =>
+            testDecoder(
+              ints,
+              Stream.emit(JsonToken.BeginArray) ++ Stream.emits(ints.map(i => JsonToken.Number(i.toString()))) ++ Stream
+                .emit(JsonToken.EndArray)
+            )
+          }
+        )
+      }
+
+      "value is a map" in {
+        check(
+          Prop.forAll(mapOfDates) { case (map) =>
+            testDecoder(
+              map,
+              Stream.emit(JsonToken.BeginObject) ++ Stream.emits(
+                map
+                  .map[List[JsonToken]] { case (k, v) => JsonToken.Key(k) :: JsonToken.Str(v.toString()) :: Nil }
+                  .toList
+                  .flatten
+              ) ++ Stream.emit(JsonToken.EndObject)
+            )
+          }
+        )
+      }
+
     }
 
     "return an error result" when {
       "expected value is a String, but got something else" in {
-        createReader("""{"foo":1}""").use { reader =>
-          IO.delay(Decoder[Map[String, String]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected STRING, but got NUMBER"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[String](
+            s"Expected ${TokenName[JsonToken.Str].show()}, but got ${TokenName[JsonToken.Number].show()}",
+            Stream.emit(JsonToken.Number("1"))
+          )
+        )
       }
 
       "expected value is a Int, but got something else" in {
-        createReader("""{"foo": {}}""").use { reader =>
-          IO.delay(Decoder[Map[String, Int]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got BEGIN_OBJECT"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[Int](
+            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.BeginObject].show()}",
+            Stream.emits(JsonToken.BeginObject :: JsonToken.EndObject :: Nil)
+          )
+        )
       }
+
       "expected value is a Boolean, but got something else" in {
-        createReader("""{"foo": 1}"""").use { reader =>
-          IO.delay(Decoder[Map[String, Boolean]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected BOOLEAN, but got NUMBER"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[Boolean](
+            s"Expected ${TokenName[JsonToken.Boolean].show()}, but got ${TokenName[JsonToken.Number].show()}",
+            Stream.emit(JsonToken.Number("1"))
+          )
+        )
       }
+
       "expected value can be converted to BigDecimal, but got something else" in {
-        createReader("""{"foo": "something else"}""").use { reader =>
-          IO.delay(Decoder[Map[String, BigDecimal]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got STRING"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[BigDecimal](
+            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()}",
+            Stream.emit(JsonToken.Str("something else"))
+          )
+        )
       }
+
       "expected value is a LocalDate, but got something else" in {
-        createReader("""{"foo": "tomorrow"}""").use { reader =>
-          IO.delay(Decoder[Map[String, LocalDate]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Text 'tomorrow' could not be parsed at index 0"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[LocalDate](
+            "Text 'tomorrow' could not be parsed at index 0",
+            Stream.emit(JsonToken.Str("tomorrow"))
+          )
+        )
       }
       "expected value is a List, but got something else" in {
-        createReader("""{"foo": {}}""").use { reader =>
-          IO.delay(Decoder[Map[String, List[Int]]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected BEGIN_ARRAY, but got BEGIN_OBJECT"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[List[Int]](
+            s"Expected ${TokenName[JsonToken.BeginArray].show()}, but got ${TokenName[JsonToken.BeginObject].show()}",
+            Stream.emits(JsonToken.BeginObject :: JsonToken.EndObject :: Nil)
+          )
+        )
       }
       "expected value is a List, but not all item has the same type" in {
-        createReader("""{"foo": [1, 2, "str"]}""").use { reader =>
-          IO.delay(Decoder[Map[String, List[Int]]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got STRING"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[List[Int]](
+            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()}",
+            Stream.emits(
+              JsonToken.BeginArray :: JsonToken.Number("1") :: JsonToken.Number("2") :: JsonToken.Str(
+                "3"
+              ) :: JsonToken.EndArray :: Nil
+            )
+          )
+        )
       }
 
       "expected value is a Map, but got something else" in {
-        createReader("""{"foo": []}""").use { reader =>
-          IO.delay(Decoder[Map[String, Map[String, Int]]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected BEGIN_OBJECT, but got BEGIN_ARRAY"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[Map[String, Int]](
+            s"Expected ${TokenName[JsonToken.BeginObject].show()}, but got ${TokenName[JsonToken.BeginArray].show()}",
+            Stream.emits(JsonToken.BeginArray :: JsonToken.EndArray :: Nil)
+          )
+        )
       }
 
       "expected value is a Optional, but has the wrong type" in {
-        createReader("""{"foo": "1"}""").use { reader =>
-          IO.delay(Decoder[Map[String, Option[Int]]].decode(reader))
-        }
-          .map(_ should be(Left(StreamingDecodingFailure("Expected NUMBER, but got STRING"))))
-          .unsafeRunSync()
+        check(
+          testDecoderFailure[Option[Int]](
+            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()}",
+            Stream.emit(JsonToken.Str("1"))
+          )
+        )
       }
+
+      // TODO: further error scenarios:
+      // - expected end of array|object but never received, etc...
     }
   }
 }

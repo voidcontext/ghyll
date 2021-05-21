@@ -1,14 +1,15 @@
 package ghyll
 
-import com.google.gson.stream.{JsonReader, JsonWriter}
+import fs2.Stream
+import ghyll.json.JsonToken
 
-trait Codec[A] extends Encoder[A] with Decoder[A]
+trait Codec[F[_], A] extends Encoder[F, A] with Decoder[F, A]
 
 object Codec extends CodecInstances {
-  def apply[A](implicit decoder: Decoder[A], encoder: Encoder[A]): Codec[A] =
-    new Codec[A] {
-      def encode(writer: JsonWriter, value: A): StreamingEncoderResult = encoder.encode(writer, value)
+  def apply[F[_], A](implicit decoder: Decoder[F, A], encoder: Encoder[F, A]): Codec[F, A] =
+    new Codec[F, A] {
+      def encode(stream: Stream[F, JsonToken], value: A): StreamingEncoderResult[F] = encoder.encode(stream, value)
 
-      def decode(reader: JsonReader): StreamingDecoderResult[A] = decoder.decode(reader)
+      def decode(stream: Stream[F, JsonToken]): StreamingDecoderResult[F, A] = decoder.decode(stream)
     }
 }

@@ -1,59 +1,58 @@
 package ghyll.auto
 
-import scala.annotation.tailrec
-
-import cats.instances.string._
-import cats.syntax.eq._
-import com.google.gson.stream.{JsonReader, JsonToken}
-import ghyll.StreamingDecoderError
-import ghyll.gson.Implicits._
+import cats.ApplicativeError
+import fs2.Stream
+import ghyll.json.JsonToken
+import ghyll.json.JsonToken.TokenName
+import ghyll.{Decoder, StreamingDecoderResult, StreamingDecodingFailure, TokenStream}
 import shapeless._
 
 private[ghyll] trait DerivedDecoderInstances {
-  implicit def derivedDecoderGeneric[A, H](implicit
+  implicit def derivedDecoderGeneric[F[_], A, H](implicit
     lg: LabelledGeneric.Aux[A, H],
-    fieldDecoders: FieldDecoder[A],
-    mapper: ReprMapper[H]
-  ): DerivedDecoder[A] =
-    reader => {
-      reader.beginObject()
-      val hlist = decodeKeys(reader, Right(Map.empty), fieldDecoders)
-      skipRemainingKeys(reader)
-      reader.endObject()
+    fieldDecoders: FieldDecoder[F, A],
+    mapper: ReprMapper[H],
+    ae: ApplicativeError[F, Throwable]
+  ): DerivedDecoder[F, A] =
+    stream =>
+     Decoder.withExpected[F, A, JsonToken.BeginObject](stream) {
+       case (_: JsonToken.BeginObject, tail) =>
+         decodeKeys(Stream.emit(Right(Map.empty[String, Any] -> tail)), fieldDecoders).flatMap {
+           case Right((m, s)) =>
+             Stream.emit(mapper.fromMap(m).map(lg.from(_) -> s))
+           case Left(err) =>
+             Stream.emit(Left(err))
+         }
+     }
 
-      hlist.flatMap(mapper.fromMap(_)).map(lg.from(_))
-    }
-
-  @tailrec
-  private[this] def decodeKeys[A](
-    reader: JsonReader,
-    decodedFields: Either[StreamingDecoderError, Map[String, Any]],
-    fieldDecoders: FieldDecoder[A]
-  ): Either[StreamingDecoderError, Map[String, Any]] =
-    if (reader.peek() === JsonToken.END_OBJECT) decodedFields
-    else {
-      val name = reader.nextName()
-      fieldDecoders.fields
-        .find(_.name === name) match {
-        case None        =>
-          reader.skipValue()
-          decodeKeys(reader, decodedFields, fieldDecoders)
-        case Some(field) =>
-          decodeKeys(
-            reader,
-            for {
-              m       <- decodedFields
-              decoded <- field.decoder.decode(reader)
-            } yield m + (name -> decoded),
-            fieldDecoders
-          )
+  private[this] def decodeKeys[F[_], A](
+    stream: StreamingDecoderResult[F, Map[String, Any]],
+    fieldDecoders: FieldDecoder[F, A]
+  )(implicit ae: ApplicativeError[F, Throwable]): StreamingDecoderResult[F, Map[String, Any]] =
+    stream.flatMap {
+      _ match {
+        case Right((m, str)) =>
+          str.head.flatMap {
+            case JsonToken.EndObject => Stream.emit(Right(m -> str.tail))
+            case JsonToken.Key(name) =>
+              fieldDecoders.fields.find(_.name == name) match {
+                case None => decodeKeys(Stream.emit(Right(m -> TokenStream.skipValue(str.tail))), fieldDecoders)
+                case Some(field) =>
+                  decodeKeys(
+                    field.decoder.decode(str.tail).map(_.map {case (a, s) => m + (name -> a) -> s}),
+                    fieldDecoders
+                  )
+              }
+            case t => Stream.emit(Left(StreamingDecodingFailure(s"Unexpected token: ${TokenName(t).show()}")))
+          }
+        case e @ Left(_) => Stream.emit(e)
       }
     }
 
   @SuppressWarnings(Array("scalafix:DisableSyntax.while"))
-  @inline private[this] def skipRemainingKeys(reader: JsonReader): Unit =
-    while (reader.peek() === JsonToken.NAME) {
-      reader.nextName()
-      reader.skipValue()
+  @inline private[this] def skipRemainingKeys[F[_]](stream: TokenStream[F])(implicit ae: ApplicativeError[F, Throwable]): TokenStream[F] =
+    stream.head.flatMap {
+      case JsonToken.Key(_) => skipRemainingKeys(TokenStream.skipValue(stream.tail))
+      case _  => stream.tail
     }
 }

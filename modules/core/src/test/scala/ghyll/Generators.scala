@@ -11,4 +11,12 @@ object Generators {
   val bigDecimal: Gen[BigDecimal] = Arbitrary.arbBigDecimal.arbitrary
   val localDate: Gen[LocalDate] =
     Arbitrary.arbDate.arbitrary.map(_.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
+
+  val mapOfDates: Gen[Map[String, LocalDate]] =
+    Gen.mapOf(
+      for {
+        k <- string
+        v <- localDate
+      } yield (k, v)
+    )
 }

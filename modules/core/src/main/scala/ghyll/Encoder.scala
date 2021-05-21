@@ -2,49 +2,52 @@ package ghyll
 
 import java.time.LocalDate
 
-import cats.instances.either._
-import cats.syntax.flatMap._
-import com.google.gson.stream.JsonWriter
-import ghyll.StreamingEncoderResult.catchEncodingFailure
+import fs2.Stream
+import ghyll.json.JsonToken
 
-trait Encoder[A] {
+trait Encoder[F[_], A] {
   type For = A
 
-  def encode(writer: JsonWriter, value: A): StreamingEncoderResult
+  def encode(stream: Stream[F, JsonToken], value: A): StreamingEncoderResult[F]
 }
 
 object Encoder extends EncoderInstances {
-  def apply[A](implicit ev: Encoder[A]) = ev
+  def apply[F[_], A](implicit ev: Encoder[F, A]) = ev
 
-  implicit val stringEncoder: Encoder[String] =
-    (writer, value) => catchEncodingFailure(writer.value(value))
+  implicit def stringEncoder[F[_]]: Encoder[F, String] =
+    (stream, value) => Right(stream ++ Stream.emit(JsonToken.Str(value)))
 
-  implicit val intEncoder: Encoder[Int] =
-    (writer, value) => catchEncodingFailure(writer.value(BigInt(value)))
+  implicit def intEncoder[F[_]]: Encoder[F, Int] =
+    (stream, value) => Right(stream ++ Stream.emit(JsonToken.Number(value.toString())))
 
-  implicit val booleanEncoder: Encoder[Boolean] =
-    (writer, value) => catchEncodingFailure(writer.value(value))
+  implicit def booleanEncoder[F[_]]: Encoder[F, Boolean] =
+    (stream, value) => Right(stream ++ Stream.emit(JsonToken.Boolean(value)))
 
-  implicit val bigDecimalEncoder: Encoder[BigDecimal] =
-    (writer, value) => catchEncodingFailure(writer.value(value))
+  implicit def bigDecimalEncoder[F[_]]: Encoder[F, BigDecimal] =
+    (stream, value) => Right(stream ++ Stream.emit(JsonToken.Str(value.toString())))
 
-  implicit val localDateEncoder: Encoder[LocalDate] =
-    (writer, value) => catchEncodingFailure(writer.value(value.toString()))
+  implicit def localDateEncoder[F[_]]: Encoder[F, LocalDate] =
+    (stream, value) => Right(stream ++ Stream.emit(JsonToken.Str(value.toString())))
 
-  implicit def optionEncoder[A](implicit encoder: Encoder[A]): Encoder[Option[A]] =
-    (writer, value) => value.fold(catchEncodingFailure(writer.nullValue()))(encoder.encode(writer, _))
+  implicit def optionEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, Option[A]] =
+    (stream, value) =>
+      value.fold[StreamingEncoderResult[F]](Right(stream ++ (Stream.emit(JsonToken.Null))))(encoder.encode(stream, _))
 
-  implicit def listEncoder[A](implicit encoder: Encoder[A]): Encoder[List[A]] =
-    (writer, value) =>
-      value.foldLeft(catchEncodingFailure(writer.beginArray())) { (result, elem) =>
-        result >> encoder.encode(writer, elem)
-      } >> catchEncodingFailure(writer.endArray())
+  implicit def listEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, List[A]] =
+    (stream, value) =>
+      value
+        .foldLeft[StreamingEncoderResult[F]](Right(Stream.emit[F, JsonToken](JsonToken.BeginArray))) { (result, v) =>
+          result.flatMap(rs => encoder.encode(rs, v))
+        }
+        .map(s => stream ++ s ++ Stream.emit(JsonToken.EndArray))
 
-  implicit def mapEncoder[A](implicit valueEncoder: Encoder[A]): Encoder[Map[String, A]] =
-    (writer, value) => {
-      value.foldLeft(catchEncodingFailure(writer.beginObject())) { case (result, (k, v)) =>
-        result >> catchEncodingFailure(writer.name(k)) >> valueEncoder.encode(writer, v)
-      } >> catchEncodingFailure(writer.endObject())
-    }
+  implicit def mapEncoder[F[_], A](implicit valueEncoder: Encoder[F, A]): Encoder[F, Map[String, A]] =
+    (stream, value) =>
+      value
+        .foldLeft[StreamingEncoderResult[F]](Right(Stream.emit[F, JsonToken](JsonToken.BeginObject))) {
+          case (result, (k, v)) =>
+            result.flatMap(rs => valueEncoder.encode(rs ++ Stream.emit(JsonToken.Key(k)), v))
+        }
+        .map(s => stream ++ s ++ Stream.emit(JsonToken.EndArray))
 
 }

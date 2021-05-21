@@ -1,6 +1,6 @@
 package ghyll.auto
 
-import ghyll.{StreamingDecoderError, StreamingDecoderResult, StreamingDecodingFailure}
+import ghyll.{StreamingDecoderError, StreamingDecodingFailure}
 import shapeless._
 import shapeless.labelled.{FieldType, field}
 
@@ -23,7 +23,7 @@ object ReprMapper {
   ): ReprMapper[FieldType[K, H] :: T] = {
     val (_) = (ev)
     new ReprMapper[FieldType[K, H] :: T] {
-      def fromMap(map: Map[String, Any]): StreamingDecoderResult[FieldType[K, H] :: T] =
+      def fromMap(map: Map[String, Any]): Either[StreamingDecoderError, FieldType[K, H] :: T] =
         map
           .get(witness.value.name)
           .toRight(StreamingDecodingFailure(s"Couldn't find decoded value of ${witness.value.name}"))
@@ -38,7 +38,7 @@ object ReprMapper {
     t: Lazy[ReprMapper[T]]
   ): ReprMapper[FieldType[K, Option[H]] :: T] =
     new ReprMapper[FieldType[K, Option[H]] :: T] {
-      def fromMap(map: Map[String, Any]): StreamingDecoderResult[FieldType[K, Option[H]] :: T] =
+      def fromMap(map: Map[String, Any]): Either[StreamingDecoderError, FieldType[K, Option[H]] :: T] =
         map
           .get(witness.value.name)
           .fold(decodeTail(None, t.value, map)) { decoded =>
@@ -50,7 +50,7 @@ object ReprMapper {
     decoded: Any,
     t: ReprMapper[T],
     map: Map[String, Any]
-  ): StreamingDecoderResult[FieldType[K, H] :: T] =
+  ): Either[StreamingDecoderError, FieldType[K, H] :: T] =
     t
       .fromMap(map)
       .map(tail => field[K](decoded.asInstanceOf[H]) :: tail) // TODO: Find a way to get rid of `asInstanceOf`
