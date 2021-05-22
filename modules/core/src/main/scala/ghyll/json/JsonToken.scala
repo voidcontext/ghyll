@@ -1,8 +1,12 @@
 package ghyll.json
 
+import cats.Eq
+
 sealed trait JsonToken
 
 object JsonToken {
+  implicit val eq: Eq[JsonToken] = Eq.fromUniversalEquals
+
   type BeginObject = BeginObject.type
   type EndObject = EndObject.type
   type BeginArray = BeginArray.type
