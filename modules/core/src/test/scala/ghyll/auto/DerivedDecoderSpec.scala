@@ -6,13 +6,14 @@ package ghyll.auto
 // import org.scalatest.compatible.Assertion
 import fs2.Stream
 import ghyll.TestDecoder
-import ghyll.auto.DerivedDecoderInstances.derivedDecoderGeneric
+import ghyll.TokenStream._
+import ghyll.auto.DerivedDecoderInstances
 import ghyll.json.JsonToken
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
 
-class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with Checkers {
+class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with Checkers with DerivedDecoderInstances {
   case class Foo(bar: String, baz: Int)
   case class FooOption(bar: Option[String], baz: Int)
 
@@ -23,15 +24,13 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             Foo("foobar", 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("bar") ::
-                JsonToken.Str("foobar") ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("bar") ::
+              JsonToken.Str("foobar") ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
       }
@@ -40,15 +39,13 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             Foo("foobar", 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.Key("bar") ::
-                JsonToken.Str("foobar") ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.Key("bar") ::
+              JsonToken.Str("foobar") ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
       }
@@ -57,17 +54,21 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             Foo("foobar", 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.Key("foo") ::
-                JsonToken.Boolean(true) ::
-                JsonToken.Key("bar") ::
-                JsonToken.Str("foobar") ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.Key("foo") ::
+              JsonToken.Boolean(true) ::
+              JsonToken.Key("foo2") ::
+              JsonToken.Boolean(true) ::
+              JsonToken.Key("bar") ::
+              JsonToken.Str("foobar") ::
+              JsonToken.Key("foo3") ::
+              JsonToken.Boolean(true) ::
+              JsonToken.Key("foo4") ::
+              JsonToken.Boolean(true) ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
       }
@@ -79,13 +80,11 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             FooOption(None, 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
       }
@@ -94,15 +93,13 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             FooOption(Option("It's here!"), 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.Key("bar") ::
-                JsonToken.Str("It's here!") ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.Key("bar") ::
+              JsonToken.Str("It's here!") ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
 
@@ -112,15 +109,13 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
         check(
           testDecoder(
             FooOption(None, 42),
-            Stream.emits(
-              JsonToken.BeginObject ::
-                JsonToken.Key("baz") ::
-                JsonToken.Number("42") ::
-                JsonToken.Key("bar") ::
-                JsonToken.Null ::
-                JsonToken.EndObject ::
-                Nil
-            )
+            JsonToken.BeginObject ::
+              JsonToken.Key("baz") ::
+              JsonToken.Number("42") ::
+              JsonToken.Key("bar") ::
+              JsonToken.Null ::
+              JsonToken.EndObject ::
+              Nil
           )
         )
       }
@@ -130,13 +125,15 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
       check(
         testDecoderFailure[FooOption](
           "Couldn't find decoded value of baz",
-          Stream.emits(
-            JsonToken.BeginObject ::
-              JsonToken.Key("bar") ::
-              JsonToken.Str("baz") ::
-              JsonToken.EndObject ::
-              Nil
-          )
+          Stream
+            .emits(
+              JsonToken.BeginObject ::
+                JsonToken.Key("bar") ::
+                JsonToken.Str("baz") ::
+                JsonToken.EndObject ::
+                Nil
+            )
+            .withPos
         )
       )
     }

@@ -10,6 +10,6 @@ object Codec extends CodecInstances {
     new Codec[F, A] {
       def encode(stream: Stream[F, JsonToken], value: A): StreamingEncoderResult[F] = encoder.encode(stream, value)
 
-      def decode(stream: Stream[F, JsonToken]): StreamingDecoderResult[F, A] = decoder.decode(stream)
+      def decode(stream: TokenStream[F]): StreamingDecoderResult[F, A] = decoder.decode(stream)
     }
 }

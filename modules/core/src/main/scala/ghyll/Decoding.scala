@@ -1,18 +1,17 @@
 package ghyll
 
-import java.io.{File, FileInputStream, InputStream, InputStreamReader}
+import java.io.{File, FileInputStream, InputStream}
 
-import scala.annotation.tailrec
-
+import cats.ApplicativeError
 import cats.effect.{Resource, Sync}
 import cats.instances.string._
 import cats.syntax.eq._
-import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
-import fs2.Stream
+import fs2.Pull._
+import fs2.{Pull, Stream}
 import ghyll.json.JsonToken
+import ghyll.json.JsonToken.TokenName
 import ghyll.jsonpath._
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.throw")) // For now....
 private[ghyll] trait Decoding {
   def decodeArray[F[_]: Sync, T](json: InputStream)(implicit
     d: Decoder[F, T]
@@ -44,7 +43,7 @@ private[ghyll] trait Decoding {
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: File)(implicit
     d: Decoder[F, T]
   ): Resource[F, DecoderResult[T]] =
-    fileInputStreamResource(json).flatMap(decodeObject(path, _))
+    fileInputStreamResource[F](json).flatMap(decodeObject(path, _))
 
   /**
    * Shortcut of
@@ -69,12 +68,12 @@ private[ghyll] trait Decoding {
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: InputStream)(implicit
     d: Decoder[F, T]
   ): Resource[F, DecoderResult[T]] =
-    tokenStream(json).evalMap { stream =>
+    TokenStream.fromJson[F](json).evalMap { stream =>
       val _ = path
       stream.flatMap {
-        case JsonToken.BeginObject =>
+        case (JsonToken.BeginObject, _) =>
           d.decode(stream.tail).map(_.map(_._1))
-        case _                     => Stream.emit(Left(StreamingDecodingFailure("Not an object!")))
+        case _                          => Stream.emit(Left(StreamingDecodingFailure("Not an object!")))
       }.compile.lastOrError
     }
 
@@ -105,7 +104,7 @@ private[ghyll] trait Decoding {
     path: JsonPath,
     json: File
   )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
-    fileInputStreamResource(json)
+    fileInputStreamResource[F](json)
       .flatMap(decodeKeyValues(path, _))
 
   /**
@@ -137,68 +136,100 @@ private[ghyll] trait Decoding {
     path: JsonPath,
     json: InputStream
   )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
-    tokenStream(json).map { stream =>
-      val _ = path
-      stream.flatMap {
-        case JsonToken.BeginObject =>
-          def decodeNext(s: Stream[F, JsonToken]): Stream[F, DecoderResult[(String, T)]] =
-            s.flatMap {
-              case JsonToken.EndObject => Stream.empty
-              case JsonToken.Key(k)    =>
-                d.decode(s.tail).flatMap {
-                  case Right((v, t)) => Stream.emit(Right(k -> v)) ++ decodeNext(t)
-                  case Left(err)     => Stream.emit(Left(err))
-                }
-              case _                   => Stream.emit(Left(StreamingDecodingFailure("")))
-            }
-          decodeNext(stream.tail)
-        case _                     => Stream.emit(Left(StreamingDecodingFailure("Not an object!")))
+    TokenStream
+      .fromJson[F](json)
+      .map(traversePath(path))
+      .map(_.stream)
+      .map { stream =>
+        stream.pull.uncons1.flatMap {
+          _.fold[Pull[F, DecoderResult[(String, T)], Unit]](
+            Pull.output1(
+              Left(
+                StreamingDecodingFailure(s"Expected ${TokenName[JsonToken.BeginObject].show()} but got 'EndDocument'")
+              )
+            )
+          ) {
+            case ((JsonToken.BeginObject, _) -> tail) =>
+              def decodeNext(stream: TokenStream[F]): Pull[F, DecoderResult[(String, T)], Unit] =
+                stream.pull.uncons1.flatMap(
+                  _.fold(
+                    Pull.output1[F, DecoderResult[(String, T)]](
+                      Left(
+                        StreamingDecodingFailure(s"Expected ${TokenName[JsonToken.Key].show()} but got 'EndDocument'")
+                      )
+                    )
+                  ) {
+                    case ((JsonToken.EndObject, _) -> _)    => Pull.done
+                    case ((JsonToken.Key(name), _) -> tail) =>
+                      d.decode(tail)
+                        .pull
+                        .uncons1
+                        .flatMap(
+                          _.fold(
+                            Pull.output1[F, DecoderResult[(String, T)]](
+                              Left(StreamingDecodingFailure("This shouldn't happen"))
+                            )
+                          ) {
+                            case (Right(v -> t) -> _) => Pull.output1(Right(name -> v)) >> decodeNext(t)
+                            case (Left(err) -> _)     => Pull.output1(Left(err))
+                          }
+                        )
+                    case ((token, pos) -> _)                =>
+                      Pull.output1(
+                        Left(
+                          StreamingDecodingFailure(
+                            s"Expected ${TokenName[JsonToken.Key].show()} or ${TokenName[JsonToken.EndObject]
+                              .show()} but got ${TokenName(token).show()} at $pos "
+                          )
+                        )
+                      )
+                  }
+                )
 
+              decodeNext(tail)
+            case ((token, pos) -> _)                  =>
+              Pull.output1(
+                Left(
+                  StreamingDecodingFailure(
+                    s"Expected ${TokenName[JsonToken.BeginObject].show()} but got ${TokenName(token).show()} at $pos "
+                  )
+                )
+              )
+          }
+        }.stream
       }
-    }
 
-  @tailrec
-  private def traversePath(path: JsonPath, reader: JsonReader): JsonReader = {
+  private def traversePath[F[_]](
+    path: JsonPath
+  )(stream: TokenStream[F])(implicit ae: ApplicativeError[F, Throwable]): Pull[F, (JsonToken, List[Pos]), Unit] = {
     path match {
-      case JNil          => reader
-      case head >:: tail =>
-        reader.beginObject()
-        traversePath(tail, skipUntil(head, reader))
+      case JNil            => stream.pull.echo
+      case phead >:: ptail =>
+        stream.pull.uncons1.flatMap {
+          case Some((JsonToken.BeginObject, _) -> tail) => traversePath(ptail)(skipUntil(phead, tail).stream)
+          case Some((token, pos) -> _)                  =>
+            Pull.raiseError(
+              new IllegalStateException(
+                s"Expected ${TokenName[JsonToken.BeginObject].show()} but got ${TokenName(token).show()} at $pos "
+              )
+            )
+          case _                                        => Pull.raiseError(new IllegalStateException("This shouldn't happen"))
+        }
     }
   }
 
-  @tailrec
-  private def skipUntil(name: String, reader: JsonReader): JsonReader = {
-    val current = reader.nextName()
-    if (current === name) reader
-    else {
-      reader.skipValue()
-      skipUntil(name, reader)
-    }
-  }
-
-  private def tokenStream[F[_]: Sync](json: InputStream): Resource[F, Stream[F, JsonToken]] =
-    readerResource(json).map { reader =>
-      Stream.unfold(nextToken(reader)) { token =>
-        Option.when(reader.hasNext())(token -> nextToken(reader))
+  private def skipUntil[F[_]](name: String, stream: TokenStream[F])(implicit
+    ae: ApplicativeError[F, Throwable]
+  ): Pull[F, (JsonToken, List[Pos]), Unit] =
+    stream.pull.uncons1.flatMap {
+      _.fold[Pull[F, (JsonToken, List[Pos]), Unit]](
+        Pull.raiseError(new IllegalStateException("Couldn't find given path"))
+      ) {
+        case ((JsonToken.Key(n), _)) -> tail if n === name => tail.pull.echo
+        case (JsonToken.Key(_), _) -> tail                 => skipUntil(name, TokenStream.skipValue(tail))
+        case _                                             => Pull.raiseError(new IllegalStateException("This shouldn't happen"))
       }
     }
-
-  private def nextToken(reader: JsonReader): JsonToken =
-    reader.peek() match {
-      case GsonToken.BEGIN_ARRAY  => reader.beginArray(); JsonToken.BeginArray
-      case GsonToken.END_ARRAY    => reader.endArray(); JsonToken.EndArray
-      case GsonToken.BEGIN_OBJECT => reader.beginObject(); JsonToken.BeginObject
-      case GsonToken.END_OBJECT   => reader.endObject(); JsonToken.EndArray
-      case GsonToken.NUMBER       => JsonToken.Number(reader.nextString())
-      case GsonToken.STRING       => JsonToken.Str(reader.nextString())
-      case GsonToken.NAME         => JsonToken.Key(reader.nextName())
-      case GsonToken.BOOLEAN      => JsonToken.Boolean(reader.nextBoolean())
-      case _                      => throw new RuntimeException("Unimplemented")
-    }
-
-  private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
-    Resource.fromAutoCloseable(Sync[F].delay(new JsonReader(new InputStreamReader(json))))
 
   private def fileInputStreamResource[F[_]: Sync](file: File): Resource[F, InputStream] =
     Resource.fromAutoCloseable(Sync[F].delay(new FileInputStream(file)))

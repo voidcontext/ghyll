@@ -2,25 +2,28 @@ package ghyll
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import fs2.Stream
 import ghyll.json.JsonToken
 import org.scalacheck.Prop
-// import ghyll.Utils.createReader
 
 @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
-trait TestDecoder {
-  def testDecoder[A](value: A, json: Stream[IO, JsonToken])(implicit decoder: Decoder[IO, A]): Prop =
-    decoder
-      .decode(json)
-      .compile
-      .lastOrError
-      .map { decoded =>
-        val unwrapped = decoded.map(_._1)
-        (unwrapped == Right(value): Prop) :| s"expected: Right($value), got $unwrapped"
-      }
-      .unsafeRunSync()
+trait TestDecoder extends TestTokenStream {
+  def testDecoder[A](value: A, tokens: List[JsonToken])(implicit decoder: Decoder[IO, A]): Prop =
+    withTokenStream(tokens) { stream =>
+      decoder
+        .decode(stream)
+        .compile
+        .lastOrError
+        .flatMap {
+          case Right(result -> stream) =>
+            stream.compile.toList.map { remaining =>
+              (result == value: Prop) :| s"expected: Right($value), got $result" &&
+              (remaining == Nil: Prop) :| s"Stream wasn't fully consumed, reamining: $remaining"
+            }
+          case Left(err)               => IO.pure((false: Prop) :| s"expected Right value, but got Left($err)")
+        }
+    }
 
-  def testDecoderFailure[A](message: String, json: Stream[IO, JsonToken])(implicit decoder: Decoder[IO, A]): Prop =
+  def testDecoderFailure[A](message: String, json: TokenStream[IO])(implicit decoder: Decoder[IO, A]): Prop =
     decoder
       .decode(json)
       .compile

@@ -1,41 +1,70 @@
-package ghyll.auto.semi
+package ghyll
 
-import ghyll.{/*Codec, Decoder, Encoder,*/ TestDecoder, TestEncoder}
+import cats.effect.IO
+import ghyll.json.JsonToken
+import ghyll.{Decoder, TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class DerivationSpec extends AnyWordSpec with Matchers with TestDecoder with TestEncoder {
-  // import ghyll.auto.semi._
+class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder with TestEncoder {
+  import ghyll.auto.semi._
 
-  // case class Foo(bar: String)
-  // case class WrappedFoo(foo: Foo)
+  case class Foo(bar: String)
+  case class WrappedFoo(foo: Foo)
 
-  // case class Response[A](data: A)
+  case class Response[A](data: A)
 
-  // "deriveDecoder" should {
-  //   "derive a decoder" when {
-  //     "a case class has only scalar attributes" in {
-  //       implicit val decoder: Decoder[Foo] = deriveDecoder[Foo]
+  "deriveDecoder" should {
+    "derive a decoder" when {
+      "a case class has only scalar attributes" in {
+        implicit val decoder: Decoder[IO, Foo] = deriveDecoder
 
-  //       testDecoder(Foo("baz"), """{"bar": "baz"}""")
-  //     }
+        testDecoder(
+          Foo("baz"),
+          JsonToken.BeginObject ::
+            JsonToken.Key("bar") ::
+            JsonToken.Str("baz") ::
+            JsonToken.EndObject ::
+            Nil
+        )
+      }
 
-  //     "case classes are nested" in {
-  //       implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-  //       implicit def responseDecoder[A: Decoder]: Decoder[Response[A]] = deriveDecoder
+      "case classes are nested" in {
+        implicit val fooDecoder: Decoder[IO, Foo] = deriveDecoder
+        implicit def wrappedDecoder: Decoder[IO, WrappedFoo] = deriveDecoder
 
-  //       testDecoder(Response(Foo("baz")), """{"data": {"bar": "baz"}}""")
+        testDecoder(
+          WrappedFoo(Foo("baz")),
+          JsonToken.BeginObject ::
+            JsonToken.Key("foo") ::
+            JsonToken.BeginObject ::
+            JsonToken.Key("bar") ::
+            JsonToken.Str("baz") ::
+            JsonToken.EndObject ::
+            JsonToken.EndObject ::
+            Nil
+        )
 
-  //     }
+      }
 
-  //     "a case class has generic attributes" in {
-  //       implicit val fooDecoder: Decoder[Foo] = deriveDecoder[Foo]
-  //       implicit def responseDecoder[A: Decoder]: Decoder[Response[A]] = deriveDecoder
+      "a case class has generic attributes" in {
+        implicit val fooDecoder: Decoder[IO, Foo] = deriveDecoder
+        implicit def responseDecoder[A](implicit d: Decoder[IO, A]): Decoder[IO, Response[A]] = deriveDecoder
 
-  //       testDecoder(Response(Foo("baz")), """{"data": {"bar": "baz"}}""")
-  //     }
-  //   }
-  // }
+        testDecoder(
+          Response(Foo("baz")),
+          JsonToken.BeginObject ::
+            JsonToken.Key("data") ::
+            JsonToken.BeginObject ::
+            JsonToken.Key("bar") ::
+            JsonToken.Str("baz") ::
+            JsonToken.EndObject ::
+            JsonToken.EndObject ::
+            Nil
+        )
+      }
+    }
+  }
 
   // "deriveEncoder" should {
   //   "derive an encoder" when {

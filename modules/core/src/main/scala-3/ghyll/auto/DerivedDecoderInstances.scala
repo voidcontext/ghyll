@@ -14,7 +14,7 @@ import fs2.Stream
 import cats.instances.stream
 import cats.Applicative
 
-object DerivedDecoderInstances:
+trait DerivedDecoderInstances:
   trait FieldDecoder[F[_]]:
     type Out
     def d: Decoder[F, Out]
