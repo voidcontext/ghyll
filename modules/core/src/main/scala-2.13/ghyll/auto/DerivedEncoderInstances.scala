@@ -1,39 +1,36 @@
 package ghyll.auto
 
-// import cats.instances.either._
-// import cats.syntax.flatMap._
-// import com.google.gson.stream.JsonWriter
-// import ghyll.StreamingEncoderResult.catchEncodingFailure
-// import ghyll.{Encoder, StreamingEncoderResult}
-// import shapeless.labelled.FieldType
-// import shapeless.{LabelledGeneric, _}
+import fs2.Stream
+import ghyll.json.JsonToken._
+import ghyll.{Encoder, StreamingEncoderResult}
+import shapeless._
+import shapeless.labelled.FieldType
 
 private[ghyll] trait DerivedEncoderInstances {
-  // implicit def derivedEncoderHNil: DerivedEncoder[HNil] =
-  //   new DerivedEncoder[HNil] {
-  //     def encode(writer: JsonWriter, value: HNil): StreamingEncoderResult = Right(())
-  //   }
+  implicit def derivedEncoderHNil[F[_]]: DerivedEncoder[F, HNil] =
+    new DerivedEncoder[F, HNil] {
+      def encode(value: HNil): StreamingEncoderResult[F] = Right(Stream.empty)
+    }
 
-  // implicit def derivedEncoderHCons[K <: Symbol, H, T <: HList](implicit
-  //   witness: Witness.Aux[K],
-  //   headEncoder: Encoder[H],
-  //   tailEncoder: DerivedEncoder[T]
-  // ): DerivedEncoder[FieldType[K, H] :: T] =
-  //   new DerivedEncoder[FieldType[K, H] :: T] {
-  //     def encode(writer: JsonWriter, value: FieldType[K, H] :: T): StreamingEncoderResult =
-  //       catchEncodingFailure(writer.name(witness.value.name)) >>
-  //         headEncoder.encode(writer, value.head) >>
-  //         tailEncoder.encode(writer, value.tail)
-  //   }
+  implicit def derivedEncoderHCons[F[_], K <: Symbol, H, T <: HList](implicit
+    headEncoder: Encoder[F, H],
+    tailEncoder: DerivedEncoder[F, T]
+  ): DerivedEncoder[F, FieldType[K, H] :: T] =
+    new DerivedEncoder[F, FieldType[K, H] :: T] {
 
-  // implicit def derivedEncoderGeneric[A, H](implicit
-  //   lg: LabelledGeneric.Aux[A, H],
-  //   hconsEncoder: DerivedEncoder[H]
-  // ): DerivedEncoder[A] =
-  //   new DerivedEncoder[A] {
-  //     def encode(writer: JsonWriter, value: A): StreamingEncoderResult =
-  //       catchEncodingFailure(writer.beginObject()) >>
-  //         hconsEncoder.encode(writer, lg.to(value)) >>
-  //         catchEncodingFailure(writer.endObject())
-  //   }
+      def encode(value: FieldType[K, H] :: T): StreamingEncoderResult[F] =
+        for {
+          headStream <- headEncoder.encode(value.head)
+          tailStream <- tailEncoder.encode(value.tail)
+        } yield headStream ++ tailStream
+    }
+
+  implicit def derivedEncoderGeneric[F[_], A, H](implicit
+    lg: LabelledGeneric.Aux[A, H],
+    hconsEncoder: DerivedEncoder[F, H]
+  ): DerivedEncoder[F, A] =
+    new DerivedEncoder[F, A] {
+      def encode(value: A): StreamingEncoderResult[F] =
+        hconsEncoder.encode(lg.to(value)).map { Stream.emit(BeginObject) ++ _ ++ Stream.emit(EndObject) }
+    }
 }

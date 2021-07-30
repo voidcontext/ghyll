@@ -1,9 +1,5 @@
 package ghyll.auto
 
-// import cats.effect.unsafe.implicits.global
-// import ghyll.Utils.createReader
-//import ghyll._
-// import org.scalatest.compatible.Assertion
 import fs2.Stream
 import ghyll.TestDecoder
 import ghyll.TokenStream._

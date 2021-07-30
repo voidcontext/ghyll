@@ -30,8 +30,7 @@ object Encoder extends EncoderInstances {
     (value) => Right(Stream.emit(JsonToken.Str(value.toString())))
 
   implicit def optionEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, Option[A]] =
-    (value) =>
-      value.fold[StreamingEncoderResult[F]](Right(Stream.emit(JsonToken.Null)))(encoder.encode)
+    (value) => value.fold[StreamingEncoderResult[F]](Right(Stream.emit(JsonToken.Null)))(encoder.encode)
 
   implicit def listEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, List[A]] =
     (value) =>

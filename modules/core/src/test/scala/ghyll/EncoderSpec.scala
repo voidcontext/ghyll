@@ -1,10 +1,10 @@
 package ghyll
 
 import ghyll.Generators._
+import ghyll.json.JsonToken
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
-import ghyll.json.JsonToken
 
 class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
   implicit override val generatorDrivenConfig =
@@ -55,7 +55,10 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
       "value is a List" in {
         check(
           Prop.forAll(Gen.listOf(int)) { case (ints) =>
-            testEncoder(ints, JsonToken.BeginArray :: ints.map(i => JsonToken.Number(i.toString())) ++ (JsonToken.EndArray :: Nil))
+            testEncoder(
+              ints,
+              JsonToken.BeginArray :: ints.map(i => JsonToken.Number(i.toString())) ++ (JsonToken.EndArray :: Nil)
+            )
           }
         )
       }

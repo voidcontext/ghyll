@@ -31,10 +31,24 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
       )
     }
 
-    //   "derive encoders automatically for case classes" in {
-    //     import ghyll.auto._
-    //     testEncoder(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
-    //   }
+    "derive encoders automatically for case classes" in {
+      import ghyll.auto._
+
+      testEncoder(
+        Response(WrappedFoo(Foo("baz"))),
+        JsonToken.BeginObject ::
+          JsonToken.Key("data") ::
+          JsonToken.BeginObject ::
+          JsonToken.Key("foo") ::
+          JsonToken.BeginObject ::
+          JsonToken.Key("bar") ::
+          JsonToken.Str("baz") ::
+          JsonToken.EndObject ::
+          JsonToken.EndObject ::
+          JsonToken.EndObject ::
+          Nil
+      )
+    }
 
     //   "derive codecs automatically for case classes" in {
     //     def test[A: Codec](value: A, json: String) = {

@@ -1,7 +1,7 @@
 package ghyll
 
 import cats.effect.IO
-import ghyll.json.JsonToken
+import ghyll.json.JsonToken._
 import ghyll.{Decoder, TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -21,10 +21,10 @@ class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder 
 
         testDecoder(
           Foo("baz"),
-          JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
+          BeginObject ::
+            Key("bar") ::
+            Str("baz") ::
+            EndObject ::
             Nil
         )
       }
@@ -35,13 +35,13 @@ class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder 
 
         testDecoder(
           WrappedFoo(Foo("baz")),
-          JsonToken.BeginObject ::
-            JsonToken.Key("foo") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
+          BeginObject ::
+            Key("foo") ::
+            BeginObject ::
+            Key("bar") ::
+            Str("baz") ::
+            EndObject ::
+            EndObject ::
             Nil
         )
 
@@ -53,41 +53,45 @@ class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder 
 
         testDecoder(
           Response(Foo("baz")),
-          JsonToken.BeginObject ::
-            JsonToken.Key("data") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
+          BeginObject ::
+            Key("data") ::
+            BeginObject ::
+            Key("bar") ::
+            Str("baz") ::
+            EndObject ::
+            EndObject ::
             Nil
         )
       }
     }
   }
 
-  // "deriveEncoder" should {
-  //   "derive an encoder" when {
-  //     "a case class has only scalar attributes" in {
-  //       implicit val fooEncoder: Encoder[Foo] = deriveEncoder[Foo]
-  //       testEncoder(Foo("baz"), """{"bar": "baz"}""")
-  //     }
+  "deriveEncoder" should {
+    "derive an encoder" when {
+      "a case class has only scalar attributes" in {
+        implicit val fooEncoder: Encoder[IO, Foo] = deriveEncoder[IO, Foo]
+        testEncoder(Foo("baz"), List(BeginObject, Key("bar"), Str("baz"), EndObject))
+      }
 
-  //     "case classes are nested" in {
-  //       implicit val fooEncoder: Encoder[Foo] = deriveEncoder[Foo]
-  //       implicit val wrappedFooEncoder: Encoder[WrappedFoo] = deriveEncoder[WrappedFoo]
+      "case classes are nested" in {
+        implicit val fooEncoder: Encoder[IO, Foo] = deriveEncoder[IO, Foo]
+        implicit val wrappedFooEncoder: Encoder[IO, WrappedFoo] = deriveEncoder[IO, WrappedFoo]
 
-  //       testEncoder(WrappedFoo(Foo("baz")), """{"foo": {"bar": "baz"}}""")
-  //     }
+        testEncoder(WrappedFoo(Foo("baz")), 
+          List(BeginObject, Key("foo"), BeginObject, Key("bar"), Str("baz"), EndObject, EndObject)
+        )
+      }
 
-  //     "a case class has generic attributes" in {
-  //       implicit val fooEncoder: Encoder[Foo] = deriveEncoder[Foo]
-  //       implicit val responseEncoder: Encoder[Response[Foo]] = deriveEncoder[Response[Foo]]
+      "a case class has generic attributes" in {
+        implicit val fooEncoder: Encoder[IO, Foo] = deriveEncoder[IO, Foo]
+        implicit val responseEncoder: Encoder[IO, Response[Foo]] = deriveEncoder[IO, Response[Foo]]
 
-  //       testEncoder(Response(Foo("baz")), """{"data": {"bar": "baz"}}""")
-  //     }
-  //   }
-  // }
+        testEncoder(Response(Foo("baz")), 
+          List(BeginObject, Key("data"), BeginObject, Key("bar"), Str("baz"), EndObject, EndObject)
+        )
+      }
+    }
+  }
 
   // "deriveCodec" should {
   //   "derive an codec" when {

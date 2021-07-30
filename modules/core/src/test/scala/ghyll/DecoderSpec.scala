@@ -1,9 +1,5 @@
 package ghyll
 
-// import java.time.LocalDate
-
-// import cats.effect.IO
-// import cats.effect.unsafe.implicits.global
 import java.time.LocalDate
 
 import fs2.Stream
