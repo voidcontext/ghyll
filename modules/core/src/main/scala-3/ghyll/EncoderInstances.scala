@@ -3,5 +3,5 @@ package ghyll
 import ghyll.auto.DerivedEncoder
 
 trait EncoderInstances {
-  // inline given derived[A](using e: DerivedEncoder[A]): Encoder[A] = e
+  inline given derived[F[_], A](using e: DerivedEncoder[F, A]): Encoder[F, A] = e
 }

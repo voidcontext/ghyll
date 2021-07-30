@@ -77,7 +77,8 @@ class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder 
         implicit val fooEncoder: Encoder[IO, Foo] = deriveEncoder[IO, Foo]
         implicit val wrappedFooEncoder: Encoder[IO, WrappedFoo] = deriveEncoder[IO, WrappedFoo]
 
-        testEncoder(WrappedFoo(Foo("baz")), 
+        testEncoder(
+          WrappedFoo(Foo("baz")),
           List(BeginObject, Key("foo"), BeginObject, Key("bar"), Str("baz"), EndObject, EndObject)
         )
       }
@@ -86,7 +87,8 @@ class SemiAutoDerivationSpec extends AnyWordSpec with Matchers with TestDecoder 
         implicit val fooEncoder: Encoder[IO, Foo] = deriveEncoder[IO, Foo]
         implicit val responseEncoder: Encoder[IO, Response[Foo]] = deriveEncoder[IO, Response[Foo]]
 
-        testEncoder(Response(Foo("baz")), 
+        testEncoder(
+          Response(Foo("baz")),
           List(BeginObject, Key("data"), BeginObject, Key("bar"), Str("baz"), EndObject, EndObject)
         )
       }

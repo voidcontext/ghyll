@@ -1,4 +1,4 @@
-package ghyll.auto.semi
+package ghyll.auto
 
 // import cats.effect.IO
 import ghyll._

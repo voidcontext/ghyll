@@ -1,7 +1,7 @@
 package ghyll
 
-// import ghyll.auto.DerivedDecoder
+import ghyll.auto.DerivedDecoder
 
 trait DecoderInstances {
-  // inline given derived[A](using d: DerivedDecoder[A]): Decoder[A] = d
+  inline given derived[F[_], A](using d: DerivedDecoder[F, A]): Decoder[F, A] = d
 }

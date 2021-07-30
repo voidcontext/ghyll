@@ -1,18 +1,18 @@
 package ghyll.auto
 
-import cats.syntax.eq._
-import ghyll.{Decoder, StreamingDecoderResult, StreamingDecodingFailure}
-import ghyll.gson.Implicits._
 import scala.annotation.tailrec
 import scala.compiletime.{constValue, erasedValue, summonInline}
 import scala.deriving.Mirror
-import ghyll.TokenStream
+
+import cats.instances.stream
+import cats.syntax.eq._
+import cats.{Applicative, ApplicativeError}
+import fs2.{Stream, Pull}
+import ghyll.gson.Implicits._
 import ghyll.json.JsonToken
 import ghyll.json.JsonToken.TokenName
-import cats.ApplicativeError
-import fs2.Stream
-import cats.instances.stream
-import cats.Applicative
+import ghyll._
+import ghyll.TokenStream.skipValue
 
 trait DerivedDecoderInstances:
   trait FieldDecoder[F[_]]:
@@ -35,9 +35,9 @@ trait DerivedDecoderInstances:
           elemLabels.zip(summonAll[F, m.MirroredElemTypes]).toMap
 
 
-        Decoder.withExpected[F, A, JsonToken.BeginObject](stream) { case (_: JsonToken.BeginObject, tail) =>
-          decodeKeys[F, A](Stream.emit(Right(Map.empty[String, Any] -> tail)), fieldDecoders).flatMap {
-            case Right((map, s)) => 
+        Decoder.withExpected[F, A, JsonToken.BeginObject](stream) { case ((_: JsonToken.BeginObject, _), tail) =>
+          decodeKeys[F, A](tail, fieldDecoders).flatMap {
+            case Right((map, s)) =>
               Stream.emit(
                 summonInline[ReprMapper[m.MirroredElemTypes]]
                   .fromMap(map, elemLabels)
@@ -48,61 +48,31 @@ trait DerivedDecoderInstances:
         }
 
   private def decodeKeys[F[_], A](
-    stream: StreamingDecoderResult[F, Map[String, Any]],
+    stream: TokenStream[F],
     fieldDecoders: Map[String, FieldDecoder[F]]
   )(using ae: ApplicativeError[F, Throwable]): StreamingDecoderResult[F, Map[String, Any]] =
-    stream.flatMap {
-      _ match
-        case Right((m, str)) =>
-          str.head.flatMap {
-            case JsonToken.EndObject => Stream.emit(Right(m -> str.tail))
-            case JsonToken.Key(name) =>
-              fieldDecoders.get(name) match
-                case None        => decodeKeys(Stream.emit(Right(m -> TokenStream.skipValue(str.tail))), fieldDecoders)
-                case Some(field) =>
-                  decodeKeys(
-                    field.d.decode(str.tail).map(_.map { case (a, s) => m + (name -> a) -> s }),
-                    fieldDecoders
-                  )
-            case t                   => Stream.emit(Left(StreamingDecodingFailure(s"Unexpected token: ${TokenName(t).show()}")))
+    def decodeNext(s: TokenStream[F], result: Map[String, Any]): Pull[F, Either[StreamingDecoderError, (Map[String, Any], TokenStream[F])], Unit] =
+      s.pull.uncons1.flatMap {
+        case Some((JsonToken.EndObject, _) -> tail) =>  Pull.output1(Right(result -> tail))
+        case Some((JsonToken.Key(name), _) -> tail) =>
+          fieldDecoders.get(name).fold(decodeNext(skipValue(tail), result)) { field =>
+            field.d.decode(tail).pull.uncons1.flatMap {
+              case Some(Right(value -> t) -> _) => decodeNext(t, result + (name -> value))
+              case Some(Left(err) -> _) => Pull.output1(Left(err))
+              case None                            => Pull.output1(Left(StreamingDecodingFailure("This shouldn't happen")))
+            }
           }
-        case e @ Left(_)     => Stream.emit(e)
-      
-    }
+        case Some((token, pos) -> _)                =>
+              Pull.output1(
+                Left(
+                  StreamingDecodingFailure(
+                    s"Expected EndObject or Key but got ${TokenName(token).show()} at $pos"
+                  )
+                )
+              )
 
-        // reader.beginObject()
+       case None                            => Pull.output1(Left(StreamingDecodingFailure("This shouldn't happen")))
+      }
 
-  //       @tailrec
-  //       def decodeKeys(result: StreamingDecoderResult[F, Map[String, Any]]): StreamingDecoderResult[F, Map[String, Any]] =
-  //         if (reader.peek() === JsonToken.END_OBJECT) result
-  //         else
-  //           val name = reader.nextName()
-  //           fieldDecoders.get(name) match
-  //             case None        =>
-  //               reader.skipValue()
-  //               decodeKeys(result)
-  //             case Some(field) =>
-  //               decodeKeys(
-  //                 for {
-  //                   r       <- result
-  //                   decoded <- field.d.decode(reader)
-  //                 } yield r + (name -> decoded)
-  //               )
+    decodeNext(stream, Map.empty).stream
 
-  //       val decoded = decodeKeys(Right(Map.empty))
-  //       skipRemainingKeys(reader)
-  //       reader.endObject()
-
-
-  //       decoded.flatMap { map =>
-  //         summonInline[ReprMapper[m.MirroredElemTypes]]
-  //           .fromMap(map, elemLabels)
-  //           .map(m.fromProduct)
-  //       }
-
-  // @SuppressWarnings(Array("scalafix:DisableSyntax.while"))
-  // @inline private[this] def skipRemainingKeys(reader: JsonReader): Unit =
-  //   while (reader.peek() === JsonToken.NAME) {
-  //     reader.nextName()
-  //     reader.skipValue()
-  //   }

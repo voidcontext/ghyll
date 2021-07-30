@@ -1,32 +1,32 @@
 package ghyll.auto
 
-// import scala.deriving.Mirror
-// import ghyll.{Encoder, StreamingEncodingFailure, StreamingEncoderResult}
-// import ghyll.StreamingEncoderResult.catchEncodingFailure
-// import com.google.gson.stream.JsonWriter
-// import cats.syntax.flatMap._
-// import cats.instances.either._
+import scala.deriving.Mirror
+import ghyll.{Encoder, StreamingEncodingFailure, StreamingEncoderResult}
+import ghyll.json.JsonToken._
+import cats.syntax.flatMap._
+import cats.instances.either._
+import fs2.Stream
 
-// import scala.compiletime.{erasedValue, summonInline}
+import scala.compiletime.{erasedValue, summonInline}
 
 
-trait DerivedEncoderInstances //:
-  // inline def summonInstances[T <: Tuple]: List[Encoder[_]] =
-  //   inline erasedValue[T] match
-  //     case _: EmptyTuple => Nil
-  //     case _: (t *: ts) => summonInline[Encoder[t]] :: summonInstances[ts]
+trait DerivedEncoderInstances:
+  inline def summonInstances[F[_], T <: Tuple]: List[Encoder[F, _]] =
+    inline erasedValue[T] match
+      case _: EmptyTuple => Nil
+      case _: (t *: ts) => summonInline[Encoder[F, t]] :: summonInstances[F, ts]
 
-  // inline given derivedEncoder[A](using m: Mirror.ProductOf[A]): DerivedEncoder[A] =
-  //       new DerivedEncoder[A]:
-  //         def encode(writer: JsonWriter, value: A): StreamingEncoderResult =
-  //           val elemInstances = summonInstances[m.MirroredElemTypes]
+  inline given derivedEncoder[F[_], A](using m: Mirror.ProductOf[A]): DerivedEncoder[F, A] =
+        new DerivedEncoder[F, A]:
+          def encode(value: A): StreamingEncoderResult[F] =
+            val elemInstances = summonInstances[F, m.MirroredElemTypes]
 
-  //           catchEncodingFailure(writer.beginObject) >>
-  //             getElemLabels[m.MirroredElemLabels]
-  //               .zip(elemInstances)
-  //               .zip(value.asInstanceOf[Product].productIterator)
-  //               .foldLeft[StreamingEncoderResult](Right(())) { case (acc, ((label, encoder), vvalue)) =>
-  //                 acc >> catchEncodingFailure(writer.name(label)) >> encoder.encode(writer, vvalue.asInstanceOf[encoder.For])
-  //               } >>
-  //                 catchEncodingFailure(writer.endObject)
-
+              getElemLabels[m.MirroredElemLabels]
+                .zip(elemInstances)
+                .zip(value.asInstanceOf[Product].productIterator)
+                .foldLeft[StreamingEncoderResult[F]](Right(Stream.emit(BeginObject))) { case (acc, ((label, encoder), vvalue)) =>
+                  for {
+                    stream <- acc
+                    next <- encoder.encode(vvalue.asInstanceOf[encoder.For])
+                  } yield stream ++ next
+                }.map (_ ++ Stream.emit(EndObject))

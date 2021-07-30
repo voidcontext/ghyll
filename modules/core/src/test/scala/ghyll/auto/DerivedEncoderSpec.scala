@@ -1,10 +1,10 @@
 package ghyll.auto
 
+import cats.effect.IO
 import ghyll._
 import ghyll.json.JsonToken._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import cats.effect.IO
 
 class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder {
 
@@ -30,7 +30,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder {
             EndObject,
             EndObject
           )
-          )(fooDecoder)
+        )(fooDecoder)
       }
 
       "there are provided optional attributes" in {
@@ -44,7 +44,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder {
             Number("42"),
             EndObject
           )
-          )(fooOptionDecoder)
+        )(fooOptionDecoder)
       }
 
       "there are not provided optional attributes" in {
