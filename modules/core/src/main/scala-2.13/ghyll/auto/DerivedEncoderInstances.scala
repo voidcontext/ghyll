@@ -13,6 +13,7 @@ private[ghyll] trait DerivedEncoderInstances {
     }
 
   implicit def derivedEncoderHCons[F[_], K <: Symbol, H, T <: HList](implicit
+    witness: Witness.Aux[K],
     headEncoder: Encoder[F, H],
     tailEncoder: DerivedEncoder[F, T]
   ): DerivedEncoder[F, FieldType[K, H] :: T] =
@@ -22,7 +23,7 @@ private[ghyll] trait DerivedEncoderInstances {
         for {
           headStream <- headEncoder.encode(value.head)
           tailStream <- tailEncoder.encode(value.tail)
-        } yield headStream ++ tailStream
+        } yield Stream.emit(Key(witness.value.name)) ++ headStream ++ tailStream
     }
 
   implicit def derivedEncoderGeneric[F[_], A, H](implicit

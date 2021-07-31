@@ -28,5 +28,5 @@ trait DerivedEncoderInstances:
                   for {
                     stream <- acc
                     next <- encoder.encode(vvalue.asInstanceOf[encoder.For])
-                  } yield stream ++ next
+                  } yield stream ++ Stream.emit(Key(label)) ++ next
                 }.map (_ ++ Stream.emit(EndObject))
