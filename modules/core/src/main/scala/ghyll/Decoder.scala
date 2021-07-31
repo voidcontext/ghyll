@@ -21,13 +21,20 @@ object Decoder extends DecoderInstances {
     createDecoder[F, String, JsonToken.Str] { case JsonToken.Str(v) => Right(v) }
 
   implicit def intDecoder[F[_]]: Decoder[F, Int] =
-    createDecoder[F, Int, JsonToken.Number] { case JsonToken.Number(v) => Right(v.toInt) }
+    createDecoder[F, Int, JsonToken.Number[String]] {
+      case JsonToken.Number(v: String) => Right(v.toInt)
+      case JsonToken.Number(_)         => Left(StreamingDecodingFailure("This shouldn't happen"))
+
+    }
 
   implicit def booleanDecoder[F[_]]: Decoder[F, Boolean] =
     createDecoder[F, Boolean, JsonToken.Boolean] { case JsonToken.Boolean(v) => Right(v) }
 
   implicit def bigDecimalDecoder[F[_]]: Decoder[F, BigDecimal] =
-    createDecoder[F, BigDecimal, JsonToken.Number] { case JsonToken.Number(v) => Right(BigDecimal(v)) }
+    createDecoder[F, BigDecimal, JsonToken.Number[String]] {
+      case JsonToken.Number(v: String) => Right(BigDecimal(v))
+      case JsonToken.Number(_)         => Left(StreamingDecodingFailure("This shouldn't happen"))
+    }
 
   implicit def localDateDecoder[F[_]]: Decoder[F, LocalDate] =
     createDecoder[F, LocalDate, JsonToken.Str] { case JsonToken.Str(v) => catchDecodingFailure(LocalDate.parse(v)) }

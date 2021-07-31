@@ -101,7 +101,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a String, but got something else" in {
         check(
           testDecoderFailure[String](
-            s"Expected ${TokenName[JsonToken.Str].show()}, but got ${TokenName[JsonToken.Number].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Str].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
             Stream.emit(JsonToken.Number("1")).withPos
           )
         )
@@ -110,7 +110,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a Int, but got something else" in {
         check(
           testDecoderFailure[Int](
-            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
             Stream.emits(JsonToken.BeginObject :: JsonToken.EndObject :: Nil).withPos
           )
         )
@@ -119,7 +119,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a Boolean, but got something else" in {
         check(
           testDecoderFailure[Boolean](
-            s"Expected ${TokenName[JsonToken.Boolean].show()}, but got ${TokenName[JsonToken.Number].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Boolean].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
             Stream.emit(JsonToken.Number("1")).withPos
           )
         )
@@ -128,7 +128,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value can be converted to BigDecimal, but got something else" in {
         check(
           testDecoderFailure[BigDecimal](
-            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
             Stream.emit(JsonToken.Str("something else")).withPos
           )
         )
@@ -153,7 +153,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a List, but not all item has the same type" in {
         check(
           testDecoderFailure[List[Int]](
-            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
             Stream
               .emits(
                 JsonToken.BeginArray :: JsonToken.Number("1") :: JsonToken.Number("2") :: JsonToken.Str(
@@ -177,7 +177,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a Optional, but has the wrong type" in {
         check(
           testDecoderFailure[Option[Int]](
-            s"Expected ${TokenName[JsonToken.Number].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
             Stream.emit(JsonToken.Str("1")).withPos
           )
         )

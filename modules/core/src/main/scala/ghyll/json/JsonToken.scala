@@ -4,6 +4,7 @@ import cats.Eq
 
 sealed trait JsonToken
 
+@SuppressWarnings(Array("scalafix:DisableSyntax.throw")) // fixme!
 object JsonToken {
   implicit val eq: Eq[JsonToken] = Eq.fromUniversalEquals
 
@@ -20,7 +21,8 @@ object JsonToken {
 
   case class Key(name: String) extends JsonToken
   case class Str(value: String) extends JsonToken
-  case class Number(value: String) extends JsonToken
+  case class Number[Repr](value: Repr) extends JsonToken
+
   case class Boolean(value: scala.Boolean) extends JsonToken
   case object Null extends JsonToken
 
@@ -35,22 +37,27 @@ object JsonToken {
     implicit val endArray: TokenName[EndArray] = () => "EndArray"
     implicit val key: TokenName[Key] = () => "Key"
     implicit val str: TokenName[Str] = () => "Str"
-    implicit val number: TokenName[Number] = () => "Number"
+    implicit val numberString: TokenName[Number[String]] = () => "Number[String]"
+    implicit val numberInt: TokenName[Number[Int]] = () => "Number[Int]"
+    implicit val numberBigDecimal: TokenName[Number[BigDecimal]] = () => "Number[BigDecimal]"
     implicit val boolean: TokenName[Boolean] = () => "Boolean"
     implicit val nulll: TokenName[Null] = () => "Null"
 
     def apply[T <: JsonToken](implicit ev: TokenName[T]): TokenName[T] = ev
     def apply(token: JsonToken): TokenName[JsonToken] =
       token match {
-        case _: BeginObject => beginObject
-        case _: EndObject   => endObject
-        case _: BeginArray  => beginArray
-        case _: EndArray    => endArray
-        case _: Key         => key
-        case _: Str         => str
-        case _: Number      => number
-        case _: Boolean     => boolean
-        case _: Null        => nulll
+        case _: BeginObject        => beginObject
+        case _: EndObject          => endObject
+        case _: BeginArray         => beginArray
+        case _: EndArray           => endArray
+        case _: Key                => key
+        case _: Str                => str
+        case Number(_: String)     => numberString
+        case Number(_: Int)        => numberInt
+        case Number(_: BigDecimal) => numberBigDecimal
+        case Number(_)             => throw new Exception("unimplemented")
+        case _: Boolean            => boolean
+        case _: Null               => nulll
       }
   }
 }

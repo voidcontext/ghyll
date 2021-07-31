@@ -18,13 +18,13 @@ object Encoder extends EncoderInstances {
     (value) => Right(Stream.emit(JsonToken.Str(value)))
 
   implicit def intEncoder[F[_]]: Encoder[F, Int] =
-    (value) => Right(Stream.emit(JsonToken.Number(value.toString())))
+    (value) => Right(Stream.emit(JsonToken.Number(value)))
 
   implicit def booleanEncoder[F[_]]: Encoder[F, Boolean] =
     (value) => Right(Stream.emit(JsonToken.Boolean(value)))
 
   implicit def bigDecimalEncoder[F[_]]: Encoder[F, BigDecimal] =
-    (value) => Right(Stream.emit(JsonToken.Number(value.toString())))
+    (value) => Right(Stream.emit(JsonToken.Number(value)))
 
   implicit def localDateEncoder[F[_]]: Encoder[F, LocalDate] =
     (value) => Right(Stream.emit(JsonToken.Str(value.toString())))

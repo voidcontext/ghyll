@@ -23,7 +23,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
       "value is an Int" in {
         check(
           Prop.forAll(int) { i =>
-            testEncoder(i, JsonToken.Number(i.toString()) :: Nil)
+            testEncoder(i, JsonToken.Number(i) :: Nil)
           }
         )
       }
@@ -39,7 +39,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
       "value is a BigDecimal" in {
         check(
           Prop.forAll(bigDecimal) { bigDecimal =>
-            testEncoder(bigDecimal, JsonToken.Number(bigDecimal.toString()) :: Nil)
+            testEncoder(bigDecimal, JsonToken.Number(bigDecimal) :: Nil)
           }
         )
       }
@@ -57,7 +57,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
           Prop.forAll(Gen.listOf(int)) { case (ints) =>
             testEncoder(
               ints,
-              JsonToken.BeginArray :: ints.map(i => JsonToken.Number(i.toString())) ++ (JsonToken.EndArray :: Nil)
+              JsonToken.BeginArray :: ints.map(i => JsonToken.Number(i)) ++ (JsonToken.EndArray :: Nil)
             )
           }
         )
@@ -66,7 +66,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
       "value is optional" in {
         check(
           Prop.forAll(Gen.option(int)) { case (maybeInt) =>
-            testEncoder(maybeInt, maybeInt.fold[JsonToken](JsonToken.Null)(i => JsonToken.Number(i.toString())) :: Nil)
+            testEncoder(maybeInt, maybeInt.fold[JsonToken](JsonToken.Null)(i => JsonToken.Number(i)) :: Nil)
           }
         )
       }

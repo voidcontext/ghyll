@@ -28,7 +28,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
               Key("bar"),
               Str("foobar"),
               Key("baz"),
-              Number("42"),
+              Number(42),
               EndObject
             )
           )(fooDecoder)
@@ -44,7 +44,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
               Key("bar"),
               Str("foobar"),
               Key("baz"),
-              Number("42"),
+              Number(42),
               EndObject
             )
           )(fooOptionDecoder)
@@ -60,7 +60,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
               Key("bar"),
               Null,
               Key("baz"),
-              Number("42"),
+              Number(42),
               EndObject
             )
           )(fooOptionDecoder)
