@@ -36,14 +36,16 @@ trait DerivedDecoderInstances:
 
 
         Decoder.withExpected[F, A, JsonToken.BeginObject](stream) { case ((_: JsonToken.BeginObject, _), tail) =>
-          decodeKeys[F, A](tail, fieldDecoders).flatMap {
-            case Right((map, s)) =>
-              Stream.emit(
-                summonInline[ReprMapper[m.MirroredElemTypes]]
-                  .fromMap(map, elemLabels)
-                  .map(m.fromProduct(_) -> s)
+          decodeKeys[F, A](tail, fieldDecoders).flatMap { decodedKeys =>
+            Stream.emit(
+              decodedKeys.fold(
+                Left.apply,
+                (map, t) =>
+                  summonInline[ReprMapper[m.MirroredElemTypes]]
+                    .fromMap(map, elemLabels)
+                    .map(m.fromProduct(_) -> t)
               )
-            case Left(err) => Stream.emit(Left(err))
+            )
           }
         }
 

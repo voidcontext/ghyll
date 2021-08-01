@@ -7,6 +7,6 @@ package object ghyll extends Decoding {
   type DecoderResult[A] = Either[StreamingDecoderError, A]
   type EncoderResult = Either[StreamingEncoderError, Unit]
 
-  type StreamingDecoderResult[F[_], A] = Stream[F, Either[StreamingDecoderError, (A, TokenStream[F])]]
-  type StreamingEncoderResult[F[_]] = Either[StreamingEncoderError, Stream[F, JsonToken]]
+  private[ghyll] type StreamingDecoderResult[F[_], A] = Stream[F, Either[StreamingDecoderError, (A, TokenStream[F])]]
+  private[ghyll] type StreamingEncoderResult[F[_]] = Either[StreamingEncoderError, Stream[F, JsonToken]]
 }
