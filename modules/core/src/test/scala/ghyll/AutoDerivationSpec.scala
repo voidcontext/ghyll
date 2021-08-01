@@ -1,7 +1,8 @@
 package ghyll
 
+import cats.effect.IO
 import ghyll.json.JsonToken
-import ghyll.{/*Codec,*/ TestDecoder, TestEncoder}
+import ghyll.{TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
@@ -55,14 +56,29 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
       )
     }
 
-    // "derive codecs automatically for case classes" in {
-    //   def test[A: Codec](value: A, json: String) = {
-    //     testDecoder(value, json)
-    //     testEncoder(value, json)
-    //   }
+    "derive codecs automatically for case classes" in {
+      import ghyll.auto._
 
-    //   import ghyll.auto._
-    //   test(Response(WrappedFoo(Foo("baz"))), """{"data": {"foo": {"bar": "baz"}}}""")
-    // }
+      def test[A](value: A, json: List[JsonToken])(implicit c: Codec[IO, A]) = {
+        testDecoder(value, json) && testEncoder(value, json)
+      }
+
+      check(
+        test(
+          Response(WrappedFoo(Foo("baz"))),
+          JsonToken.BeginObject ::
+            JsonToken.Key("data") ::
+            JsonToken.BeginObject ::
+            JsonToken.Key("foo") ::
+            JsonToken.BeginObject ::
+            JsonToken.Key("bar") ::
+            JsonToken.Str("baz") ::
+            JsonToken.EndObject ::
+            JsonToken.EndObject ::
+            JsonToken.EndObject ::
+            Nil
+        )
+      )
+    }
   }
 }

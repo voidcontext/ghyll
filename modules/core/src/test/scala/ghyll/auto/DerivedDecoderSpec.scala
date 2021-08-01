@@ -3,13 +3,12 @@ package ghyll.auto
 import fs2.Stream
 import ghyll.TestDecoder
 import ghyll.TokenStream._
-import ghyll.auto.DerivedDecoderInstances
 import ghyll.json.JsonToken
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
 
-class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with Checkers with DerivedDecoderInstances {
+class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with Checkers {
   case class Foo(bar: String, baz: Int)
   case class FooOption(bar: Option[String], baz: Int)
 
