@@ -19,7 +19,6 @@ import cats.syntax.traverse._
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import ghyll._
-import ghyll.auto.semi._
 import ghyll.syntax._
 import io.circe.parser.{decode => circeDecode}
 
@@ -85,8 +84,6 @@ object Main
         (IO.delay(println("parse using ghyll")) >>
           (repeat(
             for {
-              implicit0(ppDecoder: Decoder[PricePoint]) <- IO.pure(deriveDecoder[PricePoint])
-              implicit0(itemDecoder: Decoder[Item])     <- IO.pure(deriveDecoder[Item])
               inputStream                               <- IO.delay(new FileInputStream(sampleFile.toFile()))
               errorOrTotal                              <-
                 decodeKeyValues[IO, Item](inputStream)

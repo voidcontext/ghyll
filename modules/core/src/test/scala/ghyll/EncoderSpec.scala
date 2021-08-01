@@ -71,6 +71,9 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
         )
       }
 
+      "value is a map" in {
+        //todo!
+      }
     }
   }
 }

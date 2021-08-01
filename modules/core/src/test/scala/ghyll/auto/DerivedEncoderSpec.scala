@@ -9,30 +9,36 @@ import org.scalatestplus.scalacheck.Checkers
 
 class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with Checkers {
 
-  case class Foo(bar: String, baz: Int)
+  case class Foo(bar: String, baz: Map[String, List[Int]])
   val fooDecoder: DerivedEncoder[IO, Foo] = implicitly[DerivedEncoder[IO, Foo]]
+
+  val foo =
+    Foo("foobar", Map("baz" -> List(1, 2, 3)))
+
+  val fooRepr =
+    List(
+      BeginObject,
+      Key("bar"),
+      Str("foobar"),
+      Key("baz"),
+      BeginObject,
+      Key("baz"),
+      BeginArray,
+      Number(1),
+      Number(2),
+      Number(3),
+      EndArray,
+      EndObject,
+      EndObject
+    )
 
   case class FooOption(bar: Option[String], baz: Int)
   val fooOptionDecoder: DerivedEncoder[IO, FooOption] = implicitly[DerivedEncoder[IO, FooOption]]
 
-  case class Root(foo: Foo)
-
   "DerivedEncoder.encode" should {
     "encode case classes" when {
-      "there are simple scalar attributes" in {
-        check(
-          testEncoder(
-            Foo("foobar", 42),
-            List(
-              BeginObject,
-              Key("bar"),
-              Str("foobar"),
-              Key("baz"),
-              Number(42),
-              EndObject
-            )
-          )(fooDecoder)
-        )
+      "with values" in {
+        check(testEncoder(foo, fooRepr)(fooDecoder))
       }
 
       "there are provided optional attributes" in {

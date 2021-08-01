@@ -8,16 +8,17 @@ import scala.util.Random
 import cats.effect.Sync
 import ghyll._
 import ghyll.auto.semi._
+import cats.effect.IO
 
 object Data {
   case class PricePoint(date: LocalDate, price: BigDecimal)
   object PricePoint {
-    implicit val codec: Codec[PricePoint] = deriveCodec[PricePoint]
+    implicit val codec: Codec[IO, PricePoint] = deriveCodec
   }
 
   case class Item(name: String, prices: List[PricePoint])
   object Item {
-    implicit val codec: Codec[Item] = deriveCodec[Item]
+    implicit val codec: Codec[IO, Item] = deriveCodec
   }
 
   type DataSet = Map[String, Item]

@@ -47,6 +47,6 @@ object Encoder {
           case (result, (k, v)) =>
             result.flatMap(rs => valueEncoder.encode(v).map(rs ++ Stream.emit(JsonToken.Key(k)) ++ _))
         }
-        .map(_ ++ Stream.emit(JsonToken.EndArray))
+        .map(_ ++ Stream.emit(JsonToken.EndObject))
 
 }
