@@ -11,7 +11,7 @@ trait Encoder[F[_], A] {
   def encode(value: A): StreamingEncoderResult[F]
 }
 
-object Encoder extends EncoderInstances {
+object Encoder {
   def apply[F[_], A](implicit ev: Encoder[F, A]) = ev
 
   implicit def stringEncoder[F[_]]: Encoder[F, String] =

@@ -4,7 +4,7 @@ val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
 val scala2 = "2.13.4"
-val scala3 = "3.0.0"
+val scala3 = "3.0.1"
 val supportedScalaVersions = List(scala2, scala3)
 
 ThisBuild / name := libraryName

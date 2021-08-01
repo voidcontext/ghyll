@@ -14,26 +14,23 @@ trait Decoder[F[_], A] {
   def decode(stream: TokenStream[F]): StreamingDecoderResult[F, A]
 }
 
-object Decoder extends DecoderInstances {
+object Decoder {
   def apply[F[_], A](implicit ev: Decoder[F, A]) = ev
 
   implicit def stringDecoder[F[_]]: Decoder[F, String] =
     createDecoder[F, String, JsonToken.Str] { case JsonToken.Str(v) => Right(v) }
 
   implicit def intDecoder[F[_]]: Decoder[F, Int] =
-    createDecoder[F, Int, JsonToken.Number[String]] {
-      case JsonToken.Number(v: String) => Right(v.toInt)
-      case JsonToken.Number(_)         => Left(StreamingDecodingFailure("This shouldn't happen"))
-
+    createDecoder[F, Int, JsonToken.Number[String]] { case JsonToken.Number(v: String) =>
+      Right(v.toInt)
     }
 
   implicit def booleanDecoder[F[_]]: Decoder[F, Boolean] =
     createDecoder[F, Boolean, JsonToken.Boolean] { case JsonToken.Boolean(v) => Right(v) }
 
   implicit def bigDecimalDecoder[F[_]]: Decoder[F, BigDecimal] =
-    createDecoder[F, BigDecimal, JsonToken.Number[String]] {
-      case JsonToken.Number(v: String) => Right(BigDecimal(v))
-      case JsonToken.Number(_)         => Left(StreamingDecodingFailure("This shouldn't happen"))
+    createDecoder[F, BigDecimal, JsonToken.Number[String]] { case JsonToken.Number(v: String) =>
+      Right(BigDecimal(v))
     }
 
   implicit def localDateDecoder[F[_]]: Decoder[F, LocalDate] =
