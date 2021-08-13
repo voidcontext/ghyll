@@ -4,12 +4,12 @@ import ghyll.Decoder
 import ghyll.auto.FieldDecoder.Field
 
 // base idea from: https://stackoverflow.com/a/53438635
-private[ghyll] trait FieldDecoder[F[_], T] {
-  def fields: List[Field[F]]
+private[ghyll] trait FieldDecoder[T] {
+  def fields: List[Field]
 }
 
 private[ghyll] object FieldDecoder extends FieldDecoderInstances {
-  trait Field[F[_]] {
+  trait Field {
     type Out
     def name: String
     def decoder: Decoder[Out]

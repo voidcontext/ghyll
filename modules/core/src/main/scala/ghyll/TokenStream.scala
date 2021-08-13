@@ -3,10 +3,10 @@ package ghyll
 // import java.io.{InputStream, InputStreamReader}
 import java.io.{InputStream}
 
-import cats.ApplicativeError
+//import cats.ApplicativeError
 import cats.effect.kernel.{Resource, Sync}
 import ghyll.json.JsonToken
-// import cats.syntax.eq._
+import cats.syntax.eq._
 // import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
 // import fs2.{Pull, Stream}
 // import ghyll.gson.Implicits._
@@ -82,25 +82,25 @@ object TokenStream {
   //   def withPos: TokenStream = TokenStream.withPos(stream)
   // }
 
-  def skipValue[F[_]](stream: TokenStream)(implicit ae: ApplicativeError[F, Throwable]): TokenStream = ???
-  // {
-  //   def skip(stream: TokenStream[F], stack: List[JsonToken]): Pull[F, (JsonToken, List[Pos]), Unit] =
-  //     stream.pull.uncons1.flatMap(
-  //       _.fold[Pull[F, (JsonToken, List[Pos]), Unit]](Pull.done) {
-  //         case (t @ (BeginArray | BeginObject), _) -> tail                            => skip(tail, t :: stack)
-  //         case (Null | Str(_) | Number(_) | Boolean(_) | Key(_), _) -> tail           =>
-  //           if (stack.isEmpty) tail.pull.echo
-  //           else skip(tail, stack)
-  //         case (EndArray, _) -> tail if (stack.headOption.exists(_ === BeginArray))   =>
-  //           if (stack.tail.isEmpty) tail.pull.echo
-  //           else skip(tail, stack.tail)
-  //         case (EndObject, _) -> tail if (stack.headOption.exists(_ === BeginObject)) =>
-  //           if (stack.tail.isEmpty) tail.pull.echo
-  //           else skip(tail, stack.tail)
-  //         case (t, _)                                                                 => Pull.raiseError(new IllegalStateException(s"Something went wrong! Got $t"))
+  def skipValue[F[_]](stream: TokenStream): TokenStream = {
+    def skip(stream: TokenStream, stack: List[JsonToken]): TokenStream =
+      stream match {
+          case Right((t @ (BeginArray | BeginObject)) -> _) #:: tail                            => skip(tail, t :: stack)
+          case Right((Null | Str(_) | Number(_) | Boolean(_) | Key(_)) -> _) #:: tail           =>
+            if (stack.isEmpty) tail
+            else skip(tail, stack)
+          case Right(EndArray -> _) #:: tail if (stack.headOption.exists(_ === BeginArray))   =>
+            if (stack.tail.isEmpty) tail
+            else skip(tail, stack.tail)
+          case Right(EndObject -> _) #:: tail if (stack.headOption.exists(_ === BeginObject)) =>
+            if (stack.tail.isEmpty) tail
+            else skip(tail, stack.tail)
+          case Right(t -> p) #:: _                                                               =>
+           LazyList(Left(NestingError(s"Nesting Error: got ${TokenName(t).show()} at $p")))
+        case Left(err) #:: _ =>
+          LazyList(Left(err))
 
-  //       }
-  //     )
-  //   skip(stream, List.empty).stream
-  // }
+      }
+    skip(stream, List.empty)
+  }
 }
