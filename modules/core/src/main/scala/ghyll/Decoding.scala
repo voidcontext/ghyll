@@ -2,15 +2,10 @@ package ghyll
 
 import java.io.{File, FileInputStream, InputStream}
 
-// import cats.ApplicativeError
 import cats.effect.{Resource, Sync}
-// import cats.instances.string._
-// import cats.syntax.eq._
-// import fs2.Pull._
-// import fs2.{Pull, Stream}
-import fs2.{Stream}
-// import ghyll.json.JsonToken
-// import ghyll.json.JsonToken.TokenName
+import fs2.Stream
+import cats.syntax.eq._
+import ghyll.json.JsonToken._
 import ghyll.jsonpath._
 
 private[ghyll] trait Decoding {
@@ -68,15 +63,16 @@ private[ghyll] trait Decoding {
    */
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: InputStream)(implicit
     d: Decoder[T]
-  ): Resource[F, DecoderResult[T]] = ???
-    // TokenStream.fromJson[F](json).evalMap { stream =>
-    //   val _ = path
-    //   stream.flatMap {
-    //     case (JsonToken.BeginObject, _) =>
-    //       d.decode(stream.tail).map(_.map(_._1))
-    //     case _                          => Stream.emit(Left(StreamingDecodingFailure("Not an object!")))
-    //   }.compile.lastOrError
-    // }
+  ): Resource[F, DecoderResult[T]] =
+    TokenStream.fromJson[F](json).map { stream =>
+      val _ = path
+
+      stream match {
+        case Right(BeginObject -> _) #:: tail=>
+          d.decode(tail).map(_._1)
+        case _                          => Left(StreamingDecodingFailure("Not an object!"))
+      }
+    }
 
   /**
    * Shortcut of
@@ -136,102 +132,51 @@ private[ghyll] trait Decoding {
   def decodeKeyValues[F[_]: Sync, T](
     path: JsonPath,
     json: InputStream
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] = ???
+  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
+    TokenStream
+      .fromJson[F](json)
+      .map(traversePath(path))
+      .map {
+        case Right(BeginObject -> _) #:: tail =>
+          val _ = path
 
-    // TokenStream
-    //   .fromJson[F](json)
-    //   .map(traversePath(path))
-    //   .map(_.stream)
-    //   .map { stream =>
-    //     stream.pull.uncons1.flatMap {
-    //       _.fold[Pull[F, DecoderResult[(String, T)], Unit]](
-    //         Pull.output1(
-    //           Left(
-    //             StreamingDecodingFailure(s"Expected ${TokenName[JsonToken.BeginObject].show()} but got 'EndDocument'")
-    //           )
-    //         )
-    //       ) {
-    //         case ((JsonToken.BeginObject, _) -> tail) =>
-    //           def decodeNext(stream: TokenStream[F]): Pull[F, DecoderResult[(String, T)], Unit] =
-    //             stream.pull.uncons1.flatMap(
-    //               _.fold(
-    //                 Pull.output1[F, DecoderResult[(String, T)]](
-    //                   Left(
-    //                     StreamingDecodingFailure(s"Expected ${TokenName[JsonToken.Key].show()} but got 'EndDocument'")
-    //                   )
-    //                 )
-    //               ) {
-    //                 case ((JsonToken.EndObject, _) -> _)    => Pull.done
-    //                 case ((JsonToken.Key(name), _) -> tail) =>
-    //                   d.decode(tail)
-    //                     .pull
-    //                     .uncons1
-    //                     .flatMap(
-    //                       _.fold(
-    //                         Pull.output1[F, DecoderResult[(String, T)]](
-    //                           Left(StreamingDecodingFailure("This shouldn't happen"))
-    //                         )
-    //                       ) {
-    //                         case (Right(v -> t) -> _) => Pull.output1(Right(name -> v)) >> decodeNext(t)
-    //                         case (Left(err) -> _)     => Pull.output1(Left(err))
-    //                       }
-    //                     )
-    //                 case ((token, pos) -> _)                =>
-    //                   Pull.output1(
-    //                     Left(
-    //                       StreamingDecodingFailure(
-    //                         s"Expected ${TokenName[JsonToken.Key].show()} or ${TokenName[JsonToken.EndObject]
-    //                           .show()} but got ${TokenName(token).show()} at $pos "
-    //                       )
-    //                     )
-    //                   )
-    //               }
-    //             )
+          def decodeNext: TokenStream => Option[(DecoderResult[(String, T)], TokenStream)] = {
+            case Right(EndObject -> _) #:: _ => None
+            case Right(Key(key) -> _) #:: tail =>
+              Some(
+              d.decode(tail).fold[(DecoderResult[(String, T)], TokenStream)](
+                err => Left(err) -> tail,
+                { case (value, remaining) => Right(key -> value) -> remaining}
+              )
+              )
+          }
 
-    //           decodeNext(tail)
-    //         case ((token, pos) -> _)                  =>
-    //           Pull.output1(
-    //             Left(
-    //               StreamingDecodingFailure(
-    //                 s"Expected ${TokenName[JsonToken.BeginObject].show()} but got ${TokenName(token).show()} at $pos "
-    //               )
-    //             )
-    //           )
-    //       }
-    //     }.stream
-    //   }
+          Stream.unfold(tail)(decodeNext)
+      }
 
-  // private def traversePath[F[_]](
-  //   path: JsonPath
-  // )(stream: TokenStream)(implicit ae: ApplicativeError[F, Throwable]): Pull[F, (JsonToken, List[Pos]), Unit] = {
-  //   path match {
-  //     case JNil            => stream.pull.echo
-  //     case phead >:: ptail =>
-  //       stream.pull.uncons1.flatMap {
-  //         case Some((JsonToken.BeginObject, _) -> tail) => traversePath(ptail)(skipUntil(phead, tail).stream)
-  //         case Some((token, pos) -> _)                  =>
-  //           Pull.raiseError(
-  //             new IllegalStateException(
-  //               s"Expected ${TokenName[JsonToken.BeginObject].show()} but got ${TokenName(token).show()} at $pos "
-  //             )
-  //           )
-  //         case _                                        => Pull.raiseError(new IllegalStateException("This shouldn't happen"))
-  //       }
-  //   }
-  // }
+  private def traversePath(
+    path: JsonPath
+  )(stream: TokenStream): TokenStream =
+    path match {
+      case JNil            => stream
+      case phead >:: ptail =>
+        stream match {
+          case Right(BeginObject -> _) #:: tail => traversePath(ptail)(skipUntil(phead, tail))
+          case Right(token -> pos) #:: _ => 
+            LazyList(Left(NestingError(             s"Expected ${TokenName[BeginObject].show()} but got ${TokenName(token).show()} at $pos ")))
+          case (error @ Left(_)) #:: _ => LazyList(error)
+          case LazyList() => LazyList(Left(JsonPathError))
+        }
+    }
 
-  // private def skipUntil[F[_]](name: String, stream: TokenStream[F])(implicit
-  //   ae: ApplicativeError[F, Throwable]
-  // ): Pull[F, (JsonToken, List[Pos]), Unit] =
-  //   stream.pull.uncons1.flatMap {
-  //     _.fold[Pull[F, (JsonToken, List[Pos]), Unit]](
-  //       Pull.raiseError(new IllegalStateException("Couldn't find given path"))
-  //     ) {
-  //       case ((JsonToken.Key(n), _)) -> tail if n === name => tail.pull.echo
-  //       case (JsonToken.Key(_), _) -> tail                 => skipUntil(name, TokenStream.skipValue(tail))
-  //       case _                                             => Pull.raiseError(new IllegalStateException("This shouldn't happen"))
-  //     }
-  //   }
+
+
+  private def skipUntil(name: String, stream: TokenStream): TokenStream =
+    stream match {
+      case Right(Key(n) -> _) #:: tail if n === name => tail
+      case Right(Key(_) ->  _) #:: tail                 => skipUntil(name, TokenStream.skipValue(tail))
+      case _                                             => LazyList(Left(JsonPathError))
+    }
 
   private def fileInputStreamResource[F[_]: Sync](file: File): Resource[F, InputStream] =
     Resource.fromAutoCloseable(Sync[F].delay(new FileInputStream(file)))
