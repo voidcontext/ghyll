@@ -1,6 +1,6 @@
 package ghyll
 
-import cats.effect.IO
+//import cats.effect.IO
 import ghyll.json.JsonToken
 import ghyll.{TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
@@ -59,7 +59,7 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
     "derive codecs automatically for case classes" in {
       import ghyll.auto._
 
-      def test[A](value: A, json: List[JsonToken])(implicit c: Codec[IO, A]) = {
+      def test[A](value: A, json: List[JsonToken])(implicit c: Codec[A]) = {
         testDecoder(value, json) && testEncoder(value, json)
       }
 

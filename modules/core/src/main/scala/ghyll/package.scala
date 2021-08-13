@@ -1,12 +1,13 @@
-import fs2.Stream
 import ghyll.json.JsonToken
 
 package object ghyll extends Decoding {
-  type TokenStream[F[_]] = Stream[F, (JsonToken, List[Pos])]
+//  type TokenStream[F[_]] = Stream[F, (JsonToken, List[Pos])]
+
+  type TokenStream = LazyList[Either[TokeniserError, (JsonToken, List[Pos])]]
 
   type DecoderResult[A] = Either[StreamingDecoderError, A]
   type EncoderResult = Either[StreamingEncoderError, Unit]
 
-  private[ghyll] type StreamingDecoderResult[F[_], A] = Stream[F, Either[StreamingDecoderError, (A, TokenStream[F])]]
-  private[ghyll] type StreamingEncoderResult[F[_]] = Either[StreamingEncoderError, Stream[F, JsonToken]]
+  private[ghyll] type StreamingDecoderResult[A] = Either[StreamingDecoderError, (A, TokenStream)]
+  private[ghyll] type StreamingEncoderResult = Either[StreamingEncoderError, LazyList[JsonToken]]
 }

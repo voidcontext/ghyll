@@ -1,6 +1,6 @@
 package ghyll.auto
 
-import cats.effect.IO
+// import cats.effect.IO
 import ghyll._
 import ghyll.json.JsonToken._
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +10,7 @@ import org.scalatestplus.scalacheck.Checkers
 class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with Checkers {
 
   case class Foo(bar: String, baz: Map[String, List[Int]])
-  val fooDecoder: DerivedEncoder[IO, Foo] = implicitly[DerivedEncoder[IO, Foo]]
+  val fooDecoder: DerivedEncoder[Foo] = implicitly[DerivedEncoder[Foo]]
 
   val foo =
     Foo("foobar", Map("baz" -> List(1, 2, 3)))
@@ -33,7 +33,7 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
     )
 
   case class FooOption(bar: Option[String], baz: Int)
-  val fooOptionDecoder: DerivedEncoder[IO, FooOption] = implicitly[DerivedEncoder[IO, FooOption]]
+  val fooOptionDecoder: DerivedEncoder[FooOption] = implicitly[DerivedEncoder[FooOption]]
 
   "DerivedEncoder.encode" should {
     "encode case classes" when {

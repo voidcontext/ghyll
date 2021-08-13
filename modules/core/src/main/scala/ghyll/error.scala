@@ -1,0 +1,4 @@
+package ghyll
+
+trait TokeniserError
+

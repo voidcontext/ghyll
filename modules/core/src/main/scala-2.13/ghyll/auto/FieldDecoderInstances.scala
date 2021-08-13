@@ -13,7 +13,7 @@ private[ghyll] trait FieldDecoderInstances {
 
   implicit def hconsFieldDecoder[F[_], K <: Symbol, V, T <: HList](implicit
     witness: Witness.Aux[K],
-    d: Decoder[F, V],
+    d: Decoder[V],
     rest: FieldDecoder[F, T]
   ): FieldDecoder[F, FieldType[K, V] :: T] =
     new FieldDecoder[F, FieldType[K, V] :: T] {

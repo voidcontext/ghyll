@@ -12,6 +12,6 @@ private[ghyll] object FieldDecoder extends FieldDecoderInstances {
   trait Field[F[_]] {
     type Out
     def name: String
-    def decoder: Decoder[F, Out]
+    def decoder: Decoder[Out]
   }
 }

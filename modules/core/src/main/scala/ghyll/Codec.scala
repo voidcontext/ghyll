@@ -1,12 +1,12 @@
 package ghyll
 
-trait Codec[F[_], A] extends Decoder[F, A] with Encoder[F, A]
+trait Codec[A] extends Decoder[A] with Encoder[A]
 
 object Codec {
-  def apply[F[_], A](implicit decoder: Decoder[F, A], encoder: Encoder[F, A]): Codec[F, A] =
-    new Codec[F, A] {
-      def decode(stream: TokenStream[F]): StreamingDecoderResult[F, A] = decoder.decode(stream)
+  def apply[A](implicit decoder: Decoder[A], encoder: Encoder[A]): Codec[A] =
+    new Codec[A] {
+      def decode(stream: TokenStream): StreamingDecoderResult[A] = decoder.decode(stream)
 
-      def encode(value: A): StreamingEncoderResult[F] = encoder.encode(value)
+      def encode(value: A): StreamingEncoderResult = encoder.encode(value)
     }
 }

@@ -3,8 +3,8 @@ package ghyll
 import ghyll.auto.semi._
 
 package object auto {
-  implicit def autoDeriveDecoder[F[_], A](implicit d: DerivedDecoder[F, A]): Decoder[F, A] = deriveDecoder[F, A]
-  implicit def autoDeriveEncoder[F[_], A](implicit e: DerivedEncoder[F, A]): Encoder[F, A] = deriveEncoder[F, A]
-  implicit def autoDeriveCodec[F[_], A](implicit d: DerivedDecoder[F, A], e: DerivedEncoder[F, A]): Codec[F, A] =
-    deriveCodec[F, A]
+  implicit def autoDeriveDecoder[A](implicit d: DerivedDecoder[A]): Decoder[A] = deriveDecoder[A]
+  implicit def autoDeriveEncoder[A](implicit e: DerivedEncoder[A]): Encoder[A] = deriveEncoder[A]
+  implicit def autoDeriveCodec[A](implicit d: DerivedDecoder[A], e: DerivedEncoder[A]): Codec[A] =
+    deriveCodec[A]
 }
