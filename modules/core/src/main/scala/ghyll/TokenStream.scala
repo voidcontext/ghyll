@@ -7,51 +7,55 @@ import java.io.{InputStream}
 import cats.effect.kernel.{Resource, Sync}
 import ghyll.json.JsonToken
 import cats.syntax.eq._
-// import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
+import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
 // import fs2.{Pull, Stream}
-// import ghyll.gson.Implicits._
+import ghyll.gson.Implicits._
 // import ghyll.json.JsonToken
 import ghyll.json.JsonToken._
+import java.io.InputStreamReader
 
 object TokenStream {
 
-  def fromJson[F[_]: Sync](json: InputStream): Resource[F, TokenStream] = ???
-    // readerResource(json)
-    //   .map(Stream.unfoldEval(_)(nextToken[F]).withPos)
+  def fromJson[F[_]: Sync](json: InputStream): Resource[F, TokenStream] =
+    readerResource(json)
+      .flatMap(reader => Resource.eval(readInput(reader)))
 
-  // @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
-  // private def nextToken[F[_]: Sync](reader: JsonReader): F[Option[(JsonToken, JsonReader)]] =
-  //   Sync[F].delay {
-  //     if (reader.peek() === GsonToken.END_DOCUMENT) None
-  //     else
-  //       Option(
-  //         (reader.peek() match {
-  //           case GsonToken.BEGIN_ARRAY  =>
-  //             reader.beginArray()
-  //             JsonToken.BeginArray
-  //           case GsonToken.END_ARRAY    =>
-  //             reader.endArray()
-  //             JsonToken.EndArray
-  //           case GsonToken.BEGIN_OBJECT =>
-  //             reader.beginObject()
-  //             JsonToken.BeginObject
-  //           case GsonToken.END_OBJECT   =>
-  //             reader.endObject()
-  //             JsonToken.EndObject
-  //           case GsonToken.NUMBER       => JsonToken.Number(reader.nextString())
-  //           case GsonToken.STRING       => JsonToken.Str(reader.nextString())
-  //           case GsonToken.NAME         => JsonToken.Key(reader.nextName())
-  //           case GsonToken.BOOLEAN      => JsonToken.Boolean(reader.nextBoolean())
-  //           case GsonToken.NULL         =>
-  //             reader.nextNull()
-  //             JsonToken.Null
-  //           case _                      => throw new RuntimeException("Unimplemented")
-  //         }) -> reader
-  //       )
-  //   }
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
+  private def readInput[F[_]: Sync](reader: JsonReader): F[TokenStream] =
+    Sync[F].delay {
 
-  // private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
-  //   Resource.fromAutoCloseable(Sync[F].delay(new JsonReader(new InputStreamReader(json))))
+      def nextToken: LazyList[Either[TokeniserError, JsonToken]] =
+        if (reader.peek() === GsonToken.END_DOCUMENT) LazyList.empty
+        else {
+          ((reader.peek() match {
+            case GsonToken.BEGIN_ARRAY  =>
+              reader.beginArray()
+              Right(JsonToken.BeginArray)
+            case GsonToken.END_ARRAY    =>
+              reader.endArray()
+              Right(JsonToken.EndArray)
+            case GsonToken.BEGIN_OBJECT =>
+              reader.beginObject()
+              Right(JsonToken.BeginObject)
+            case GsonToken.END_OBJECT   =>
+              reader.endObject()
+              Right(JsonToken.EndObject)
+            case GsonToken.NUMBER       => Right(JsonToken.Number(reader.nextString()))
+            case GsonToken.STRING       => Right(JsonToken.Str(reader.nextString()))
+            case GsonToken.NAME         => Right(JsonToken.Key(reader.nextName()))
+            case GsonToken.BOOLEAN      => Right(JsonToken.Boolean(reader.nextBoolean()))
+            case GsonToken.NULL         =>
+              reader.nextNull()
+              Right(JsonToken.Null)
+            case _                      => Left(UnimplementedToken)
+          }): Either[TokeniserError, JsonToken]) #:: nextToken
+        }
+
+      ((Left[TokeniserError, (JsonToken, List[Pos])](LazyHead)) #:: withPos(nextToken)).tail
+    }
+
+  private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
+    Resource.fromAutoCloseable(Sync[F].delay(new JsonReader(new InputStreamReader(json))))
 
   def withPos[F[_]](stream: LazyList[Either[TokeniserError, JsonToken]]): TokenStream = {
     def currentPos(token: JsonToken, pos: List[Pos]): List[Pos] =
@@ -66,11 +70,8 @@ object TokenStream {
 
     def addPos(stream: LazyList[Either[TokeniserError, JsonToken]], pos: List[Pos]): TokenStream =
       stream match {
-        case Right(head) #:: tail =>
-          val current: List[Pos] = currentPos(head, pos)
-          Right(head -> current)  #:: addPos(tail, current)
-        case Left(err) #:: _ =>
-          LazyList(Left(err))
+        case Right(head) #:: tail => Right(head -> pos)  #:: addPos(tail, currentPos(head, pos))
+        case Left(err) #:: _ => LazyList(Left(err))
         case LazyList() => LazyList.empty
 
       }

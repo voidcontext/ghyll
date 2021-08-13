@@ -15,32 +15,14 @@ trait TestDecoder extends TestTokenStream {
       case Left(err)               => (false: Prop) :| s"expected Right value, but got Left($err)"
     }
 
-    // withTokenStream(tokens) { stream =>
-    //   decoder
-    //     .decode(stream)
-    //     .compile
-    //     .lastOrError
-    //     .flatMap {
-    //       case Right(result -> stream) =>
-    //         stream.compile.toList.map { remaining =>
-    //           (result == value: Prop) :| s"expected: Right($value), got $result" &&
-    //           (remaining == Nil: Prop) :| s"Stream wasn't fully consumed, reamining: $remaining"
-    //         }
-    //       case Left(err)               => IO.pure((false: Prop) :| s"expected Right value, but got Left($err)")
-    //     }
-    // }
 
-  def testDecoderFailure[A](message: String, json: TokenStream)(implicit decoder: Decoder[A]): Prop = ???
-    // decoder
-    //   .decode(json)
-    //   .compile
-    //   .lastOrError
-    //   .map { decoded =>
-    //     val unwrapped = decoded.map(_._1)
-    //     (unwrapped == Left(
-    //       StreamingDecodingFailure(message)
-    //     ): Prop) :| s"expected: Left(StreamingDecodingFailure($message)), got $unwrapped"
-    //   }
-    //   .unsafeRunSync()
+  def testDecoderFailure[A](message: String, tokens: List[JsonToken])(implicit decoder: Decoder[A]): Prop = {
+    val decoded = decoder
+      .decode(tokenStream(tokens))
 
+    val unwrapped = decoded.map(_._1)
+    (unwrapped == Left(
+      StreamingDecodingFailure(message)
+    ): Prop) :| s"expected: Left(StreamingDecodingFailure($message)), got $unwrapped"
+  }
 }

@@ -21,6 +21,9 @@ trait TestTokenStream {
   //   //   }
   //   //   .unsafeRunSync()
 
+  def wrapTokens(tokens: List[JsonToken]): LazyList[Either[TokeniserError, JsonToken]] =
+    LazyList(tokens.map(Right(_)): _*)
+
   def tokenStream(tokens: List[JsonToken]): TokenStream =
     TokenStream.withPos(LazyList(tokens.map(Right(_)): _*))
 

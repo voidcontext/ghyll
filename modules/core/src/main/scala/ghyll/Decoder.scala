@@ -90,8 +90,8 @@ object Decoder {
         stream match {
           case Right((token: Token) -> _) #:: tail =>
             decodeToken(token).map(_ -> tail)
-          case Right(_ -> pos) #:: _ =>
-            Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()}, but got ${TokenName[Token].show()} at $pos"))
+          case Right(t -> pos) #:: _ =>
+            Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()}, but got ${TokenName(t).show()} at $pos"))
           case Left(err) #:: _ =>
             Left(StreamingDecodingFailure(err.toString))
           case LazyList() =>

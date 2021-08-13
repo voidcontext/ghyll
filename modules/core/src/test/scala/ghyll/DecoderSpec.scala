@@ -6,11 +6,12 @@ package ghyll
 import ghyll.Generators._
 // import ghyll.TokenStream._
 import ghyll.json.JsonToken
-// import ghyll.json.JsonToken.TokenName
+import ghyll.json.JsonToken.TokenName
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
+import java.time.LocalDate
 
 class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecoder {
   implicit override val generatorDrivenConfig =
@@ -97,94 +98,92 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       }
     }
 
-    // "return an error result" when {
-    //   "expected value is a String, but got something else" in {
-    //     check(
-    //       testDecoderFailure[String](
-    //         s"Expected ${TokenName[JsonToken.Str].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
-    //         Stream.emit(JsonToken.Number("1")).withPos
-    //       )
-    //     )
-    //   }
+    "return an error result" when {
+      "expected value is a String, but got something else" in {
+        check(
+          testDecoderFailure[String](
+            s"Expected ${TokenName[JsonToken.Str].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
+            JsonToken.Number("1") :: Nil
+          )
+        )
+      }
 
-    //   "expected value is a Int, but got something else" in {
-    //     check(
-    //       testDecoderFailure[Int](
-    //         s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
-    //         Stream.emits(JsonToken.BeginObject :: JsonToken.EndObject :: Nil).withPos
-    //       )
-    //     )
-    //   }
+      "expected value is a Int, but got something else" in {
+        check(
+          testDecoderFailure[Int](
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
+            JsonToken.BeginObject :: JsonToken.EndObject :: Nil
+          )
+        )
+      }
 
-    //   "expected value is a Boolean, but got something else" in {
-    //     check(
-    //       testDecoderFailure[Boolean](
-    //         s"Expected ${TokenName[JsonToken.Boolean].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
-    //         Stream.emit(JsonToken.Number("1")).withPos
-    //       )
-    //     )
-    //   }
+      "expected value is a Boolean, but got something else" in {
+        check(
+          testDecoderFailure[Boolean](
+            s"Expected ${TokenName[JsonToken.Boolean].show()}, but got ${TokenName[JsonToken.Number[String]].show()} at List()",
+            JsonToken.Number("1") :: Nil
+          )
+        )
+      }
 
-    //   "expected value can be converted to BigDecimal, but got something else" in {
-    //     check(
-    //       testDecoderFailure[BigDecimal](
-    //         s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
-    //         Stream.emit(JsonToken.Str("something else")).withPos
-    //       )
-    //     )
-    //   }
+      "expected value can be converted to BigDecimal, but got something else" in {
+        check(
+          testDecoderFailure[BigDecimal](
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
+            JsonToken.Str("something else") :: Nil
+          )
+        )
+      }
 
-    //   "expected value is a LocalDate, but got something else" in {
-    //     check(
-    //       testDecoderFailure[LocalDate](
-    //         "Text 'tomorrow' could not be parsed at index 0",
-    //         Stream.emit(JsonToken.Str("tomorrow")).withPos
-    //       )
-    //     )
-    //   }
-    //   "expected value is a List, but got something else" in {
-    //     check(
-    //       testDecoderFailure[List[Int]](
-    //         s"Expected ${TokenName[JsonToken.BeginArray].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
-    //         Stream.emits(JsonToken.BeginObject :: JsonToken.EndObject :: Nil).withPos
-    //       )
-    //     )
-    //   }
-    //   "expected value is a List, but not all item has the same type" in {
-    //     check(
-    //       testDecoderFailure[List[Int]](
-    //         s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
-    //         Stream
-    //           .emits(
-    //             JsonToken.BeginArray :: JsonToken.Number("1") :: JsonToken.Number("2") :: JsonToken.Str(
-    //               "3"
-    //             ) :: JsonToken.EndArray :: Nil
-    //           )
-    //           .withPos
-    //       )
-    //     )
-    //   }
+      "expected value is a LocalDate, but got something else" in {
+        check(
+          testDecoderFailure[LocalDate](
+            "Text 'tomorrow' could not be parsed at index 0",
+            JsonToken.Str("tomorrow") :: Nil
+          )
+        )
+      }
+      "expected value is a List, but got something else" in {
+        check(
+          testDecoderFailure[List[Int]](
+            s"Expected ${TokenName[JsonToken.BeginArray].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
+            JsonToken.BeginObject :: JsonToken.EndObject :: Nil
+          )
+        )
+      }
+      "expected value is a List, but not all item has the same type" in {
+        check(
+          testDecoderFailure[List[Int]](
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
+            JsonToken.BeginArray ::
+              JsonToken.Number("1") ::
+              JsonToken.Number("2") ::
+              JsonToken.Str("3") ::
+              JsonToken.EndArray :: Nil
+          )
+        )
+      }
 
-    //   "expected value is a Map, but got something else" in {
-    //     check(
-    //       testDecoderFailure[Map[String, Int]](
-    //         s"Expected ${TokenName[JsonToken.BeginObject].show()}, but got ${TokenName[JsonToken.BeginArray].show()} at List()",
-    //         Stream.emits(JsonToken.BeginArray :: JsonToken.EndArray :: Nil).withPos
-    //       )
-    //     )
-    //   }
+      "expected value is a Map, but got something else" in {
+        check(
+          testDecoderFailure[Map[String, Int]](
+            s"Expected ${TokenName[JsonToken.BeginObject].show()}, but got ${TokenName[JsonToken.BeginArray].show()} at List()",
+            JsonToken.BeginArray :: JsonToken.EndArray :: Nil
+          )
+        )
+      }
 
-    //   "expected value is a Optional, but has the wrong type" in {
-    //     check(
-    //       testDecoderFailure[Option[Int]](
-    //         s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
-    //         Stream.emit(JsonToken.Str("1")).withPos
-    //       )
-    //     )
-    //   }
+      "expected value is a Optional, but has the wrong type" in {
+        check(
+          testDecoderFailure[Option[Int]](
+            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
+            JsonToken.Str("1") :: Nil
+          )
+        )
+      }
 
       // TODO: further error scenarios:
       // - expected end of array|object but never received, etc...
-    //}
+    }
   }
 }
