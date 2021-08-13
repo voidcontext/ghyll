@@ -34,78 +34,53 @@ object Decoder {
   implicit def localDateDecoder: Decoder[LocalDate] =
     createDecoder[LocalDate, JsonToken.Str] { case JsonToken.Str(v) => catchDecodingFailure(LocalDate.parse(v)) }
 
-  implicit def optionDecoder[A]/* (implicit aDecoder: Decoder[A]) */ : Decoder[Option[A]] =
+  implicit def optionDecoder[A](implicit aDecoder: Decoder[A]): Decoder[Option[A]] =
     _ match {
       case Right(JsonToken.Null -> _) #:: tail =>
         Right(Option.empty[A] -> tail)
-      // TODO
+      case head #:: tail =>
+        aDecoder.decode(head #:: tail).map { case (value, tail) => Some(value) -> tail}
       case _ => Left(StreamingDecodingFailure("Unimplemented"))
     }
 
+  implicit def listDecoder[A](implicit aDecoder: Decoder[A]): Decoder[List[A]] =
+      withExpected[List[A], JsonToken.BeginArray](_) { case ((_: JsonToken.BeginArray, _), tail) =>
+        def decodeNext(stream: TokenStream, result: List[A]): StreamingDecoderResult[List[A]] =
+          stream match {
+            case Right(JsonToken.EndArray -> _) #:: tail => Right(result -> tail)
+            case head #:: tail =>
+              aDecoder.decode(head #:: tail).flatMap {
+                case value -> tail => decodeNext(tail, value :: result)
+              }
+          }
 
+        decodeNext(tail, Nil).map {
+          case (list, tail) => list.reverse -> tail
+        }
+      }
 
-    // _.pull.uncons1
-    //   .flatMap[F, Either[StreamingDecoderError, (Option[A], TokenStream)], Unit] {
-    //     case Some((JsonToken.Null, _) -> tail) => Pull.output1(Right(Option.empty[A] -> tail))
-    //     case Some(tokenWithPos -> tail)        =>
-    //       aDecoder.decode(tail.cons1(tokenWithPos)).map(_.map { case (a, s) => Some(a) -> s }).pull.echo
-    //     case None                              => Pull.output1(Left(StreamingDecodingFailure(s"Expected optional value but got 'EndOfDocument'")))
-    //   }
-    //   .stream
+  implicit def mapDecoder[V](implicit valueDecoder: Decoder[V]): Decoder[Map[String, V]] =
+    stream =>
+      withExpected[Map[String, V], JsonToken.BeginObject](stream) { case ((_: JsonToken.BeginObject, _) -> tail) =>
+        def decodeNext(stream: TokenStream, result: Map[String, V]): StreamingDecoderResult[Map[String, V]] =
+          stream match {
+            case Right(JsonToken.EndObject -> _) #:: tail => Right(result -> tail)
+            case Right(JsonToken.Key(key) -> _) #:: tail =>
+              valueDecoder.decode(tail).flatMap {
+                case value -> remaining =>
+                  decodeNext(remaining, result + (key -> value))
+              }
+            case Right(token -> pos) #:: _ =>
+              Left(
+                StreamingDecodingFailure(
+                  s"Expected ${TokenName[JsonToken.Key].show()} or ${TokenName[JsonToken.EndObject]} but got ${TokenName(token).show()} at $pos"
+                )
+              )
+            case Left(err) #:: _ => Left(StreamingDecodingFailure(err.toString))
+          }
 
-  implicit def listDecoder[A] /*(implicit aDecoder: Decoder[F, A])*/ : Decoder[List[A]] =
-    _ => Left(StreamingDecodingFailure("Unimplemented"))
-      // withExpected[F, List[A], JsonToken.BeginArray](stream) { case ((_: JsonToken.BeginArray, _), tail) =>
-      //   def decodeNext(
-      //     stream: TokenStream[F],
-      //     result: List[A]
-      //   ): Pull[F, Either[StreamingDecoderError, (List[A], TokenStream[F])], Unit] =
-      //     stream.pull.uncons1.flatMap {
-      //       case Some((JsonToken.EndArray, _) -> tail) => Pull.output1(Right(result.reverse -> tail))
-      //       case Some(tokenWithPos -> tail)            =>
-      //         aDecoder.decode(tail.cons1(tokenWithPos)).pull.uncons1.flatMap {
-      //           case Some(Right(value -> tail) -> _) => decodeNext(tail, value :: result)
-      //           case Some(Left(err) -> _)            => Pull.output1(Left(err))
-      //           case None                            => Pull.output1(Left(StreamingDecodingFailure("This shouldn't happen")))
-      //         }
-      //       case None                                  => Pull.output1(Left(StreamingDecodingFailure("Expected list item, but got 'EndOfDocument'")))
-      //     }
-
-      //   decodeNext(tail, List.empty).stream
-      // }
-
-  implicit def mapDecoder[V] /*(implicit valueDecoder: Decoder[F, V])*/ : Decoder[Map[String, V]] =
-    _ => Left(StreamingDecodingFailure("Unimplemented"))
-    // stream =>
-    //   withExpected[F, Map[String, V], JsonToken.BeginObject](stream) { case ((_: JsonToken.BeginObject, _), tail) =>
-    //     def decodeNext(
-    //       stream: TokenStream[F],
-    //       result: Map[String, V]
-    //     ): Pull[F, Either[StreamingDecoderError, (Map[String, V], TokenStream[F])], Unit] =
-    //       stream.pull.uncons1.flatMap {
-    //         case Some((JsonToken.EndObject, _) -> tail) => Pull.output1((Right(result -> tail)))
-    //         case Some((JsonToken.Key(name), _) -> tail) =>
-    //           valueDecoder.decode(tail).pull.uncons1.flatMap {
-    //             case Some(Right(value -> tail) -> _) => decodeNext(tail, result + (name -> value))
-    //             case Some(Left(err) -> _)            => Pull.output1(Left(err))
-    //             case None                            => Pull.output1(Left(StreamingDecodingFailure("This shouldn't happen")))
-    //           }
-    //         case Some((token, pos) -> _)                =>
-    //           Pull.output1(
-    //             Left(
-    //               StreamingDecodingFailure(
-    //                 s"Expected ${TokenName[JsonToken.Key].show()} but got ${TokenName(token).show()} at $pos"
-    //               )
-    //             )
-    //           )
-    //         case None                                   =>
-    //           Pull.output1(
-    //             Left(StreamingDecodingFailure(s"Expected ${TokenName[JsonToken.Key].show()}, but got 'EndOfDocument'"))
-    //           )
-    //       }
-
-    //     decodeNext(tail, Map.empty).stream
-    //   }
+        decodeNext(tail, Map.empty)
+      }
 
   private def createDecoder[A, Token <: JsonToken: ClassTag: TokenName](
     decodeToken: Token => Either[StreamingDecoderError, A]
@@ -125,37 +100,25 @@ object Decoder {
 
     }
 
+  private[ghyll] def withExpected[A, Token <: JsonToken: TokenName](
+    stream: TokenStream
+  )(
+    pf: PartialFunction[((JsonToken, List[Pos]), TokenStream), StreamingDecoderResult[A]]
+  ): StreamingDecoderResult[A] =
+    stream match {
+      case Right(head) #:: tail =>
+        pf.orElse(expected[A, Token])(head -> tail)
+      case LazyList() =>
+        endOfDocumentError[A, Token]
+    }
 
+  private def endOfDocumentError[A, Token <: JsonToken: TokenName]: StreamingDecoderResult[A] =
+    Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()} but got 'EndOfDocument'"))
 
-  //   withExpected[A, Token](_) { case ((token: Token, _), stream) =>
-  //     Stream.emit(pf(token).map(_ -> stream)).covary[F]
-  //   }
-
-  // private[ghyll] def withExpected[A, Token <: JsonToken: TokenName](
-  //   stream: TokenStream
-  // )(
-  //   pf: PartialFunction[((JsonToken, List[Pos]), TokenStream), StreamingDecoderResult[A]]
-  // ): StreamingDecoderResult[A] =
-  //   stream match {
-  //     case head #:: tail =>
-  //       pf.orElse(expected[A, Token])(head -> tail)
-  //   }
-
-  //   stream.pull.uncons1
-  //     .flatMap[F, Either[StreamingDecoderError, (A, TokenStream[F])], Unit] {
-  //       case Some(tokenWithPos -> tail) =>
-  //         pf.orElse(expected[A, Token])(tokenWithPos -> tail).pull.echo
-  //       case None                       =>
-  //         Pull.output1(Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()} but got 'EndOfDocument'")))
-  //     }
-  //     .stream
-
-  // private def expected[A, Token <: JsonToken: TokenName]
-  //   : PartialFunction[((JsonToken, List[Pos]), TokenStream), StreamingDecoderResult[A]] = { case ((t, pos), _) =>
-  //   LazyList(
-  //     Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()}, but got ${TokenName(t).show()} at $pos"))
-  //   )
-  // }
+  private def expected[A, Token <: JsonToken: TokenName]
+    : PartialFunction[((JsonToken, List[Pos]), TokenStream), StreamingDecoderResult[A]] = { case ((t, pos), _) =>
+      Left(StreamingDecodingFailure(s"Expected ${TokenName[Token].show()}, but got ${TokenName(t).show()} at $pos"))
+  }
 
   // TODO: make sure pos is accessible here
   private def catchDecodingFailure[A](body: => A): Either[StreamingDecoderError, A] =

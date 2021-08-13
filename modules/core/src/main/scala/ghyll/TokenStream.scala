@@ -5,12 +5,13 @@ import java.io.{InputStream}
 
 import cats.ApplicativeError
 import cats.effect.kernel.{Resource, Sync}
+import ghyll.json.JsonToken
 // import cats.syntax.eq._
 // import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
 // import fs2.{Pull, Stream}
 // import ghyll.gson.Implicits._
 // import ghyll.json.JsonToken
-// import ghyll.json.JsonToken._
+import ghyll.json.JsonToken._
 
 object TokenStream {
 
@@ -52,28 +53,30 @@ object TokenStream {
   // private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
   //   Resource.fromAutoCloseable(Sync[F].delay(new JsonReader(new InputStreamReader(json))))
 
-  // def withPos[F[_]](stream: Stream[F, JsonToken]): TokenStream = ???
-  // {
-  //   def currentPos(token: JsonToken, pos: List[Pos]): List[Pos] =
-  //     token match {
-  //       case BeginArray                             => Pos.ArrayIndex(0) :: Pos.Array :: pos
-  //       case EndArray                               => Pos.endArray(pos)
-  //       case BeginObject                            => Pos.Obj :: pos
-  //       case EndObject                              => Pos.endObj(pos)
-  //       case Number(_) | Str(_) | Boolean(_) | Null => Pos.nextPos(pos)
-  //       case Key(n)                                 => Pos.nextKey(pos, n)
-  //     }
+  def withPos[F[_]](stream: LazyList[Either[TokeniserError, JsonToken]]): TokenStream = {
+    def currentPos(token: JsonToken, pos: List[Pos]): List[Pos] =
+      token match {
+        case BeginArray                             => Pos.ArrayIndex(0) :: Pos.Array :: pos
+        case EndArray                               => Pos.endArray(pos)
+        case BeginObject                            => Pos.Obj :: pos
+        case EndObject                              => Pos.endObj(pos)
+        case Number(_) | Str(_) | Boolean(_) | Null => Pos.nextPos(pos)
+        case Key(n)                                 => Pos.nextKey(pos, n)
+      }
 
-  //   def addPos(stream: Stream[F, JsonToken], pos: List[Pos]): Pull[F, (JsonToken, List[Pos]), Unit] =
-  //     stream.pull.uncons1.flatMap {
-  //       case Some((h, tail)) =>
-  //         val current = currentPos(h, pos)
-  //         Pull.output1(h -> pos) >> addPos(tail, current)
-  //       case None            => Pull.done
-  //     }
+    def addPos(stream: LazyList[Either[TokeniserError, JsonToken]], pos: List[Pos]): TokenStream =
+      stream match {
+        case Right(head) #:: tail =>
+          val current: List[Pos] = currentPos(head, pos)
+          Right(head -> current)  #:: addPos(tail, current)
+        case Left(err) #:: _ =>
+          LazyList(Left(err))
+        case LazyList() => LazyList.empty
 
-  //   addPos(stream, List.empty).stream
-  // }
+      }
+
+    addPos(stream, List.empty)
+  }
 
   // implicit class StreamOps(stream: Stream[F, JsonToken]) {
   //   def withPos: TokenStream = TokenStream.withPos(stream)

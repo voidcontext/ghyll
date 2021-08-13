@@ -7,7 +7,14 @@ import org.scalacheck.Prop
 
 @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 trait TestDecoder extends TestTokenStream {
-  def testDecoder[A](value: A, tokens: List[JsonToken])(implicit decoder: Decoder[A]): Prop = ???
+  def testDecoder[A](value: A, tokens: List[JsonToken])(implicit decoder: Decoder[A]): Prop =
+    decoder.decode(tokenStream(tokens)) match {
+      case Right(result -> remaining) =>
+        (result == value: Prop) :| s"expected: Right($value), got $result" &&
+        (remaining == Nil: Prop) :| s"Stream wasn't fully consumed, reamining: $remaining"
+      case Left(err)               => (false: Prop) :| s"expected Right value, but got Left($err)"
+    }
+
     // withTokenStream(tokens) { stream =>
     //   decoder
     //     .decode(stream)
