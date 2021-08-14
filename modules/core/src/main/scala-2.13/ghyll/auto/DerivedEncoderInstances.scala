@@ -15,7 +15,7 @@ private[ghyll] trait DerivedEncoderInstances {
         Right(LazyList.empty)
     }
 
-  implicit def derivedEncoderHCons[K <: Symbol, H, T <: HList] (implicit
+  implicit def derivedEncoderHCons[K <: Symbol, H, T <: HList](implicit
     witness: Witness.Aux[K],
     headEncoder: Encoder[H],
     tailEncoder: DerivedEncoder[T]
@@ -28,10 +28,10 @@ private[ghyll] trait DerivedEncoderInstances {
         } yield Key(witness.value.name) #:: (headStream ++ tailStream)
     }
 
-  implicit def derivedEncoderGeneric[A, H] (implicit
+  implicit def derivedEncoderGeneric[A, H](implicit
     lg: LabelledGeneric.Aux[A, H],
     hconsEncoder: DerivedEncoder[H]
-  ) : DerivedEncoder[A] =
+  ): DerivedEncoder[A] =
     new DerivedEncoder[A] {
       def encode(value: A): StreamingEncoderResult =
         hconsEncoder.encode(lg.to(value)).map { BeginObject #:: _ ++ LazyList(EndObject) }

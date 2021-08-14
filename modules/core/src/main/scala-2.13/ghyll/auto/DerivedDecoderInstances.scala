@@ -7,11 +7,11 @@ import ghyll.json.JsonToken._
 import shapeless.LabelledGeneric
 
 private[ghyll] trait DerivedDecoderInstances {
-  implicit def derivedDecoderGeneric[A, H] (implicit
+  implicit def derivedDecoderGeneric[A, H](implicit
     lg: LabelledGeneric.Aux[A, H],
     fieldDecoders: FieldDecoder[A],
-    mapper: ReprMapper[H],
-  ) : DerivedDecoder[A] =
+    mapper: ReprMapper[H]
+  ): DerivedDecoder[A] =
     new DerivedDecoder[A] {
       def decode(stream: TokenStream): StreamingDecoderResult[A] =
         Decoder.withExpected[A, BeginObject](stream) { case ((_: BeginObject, _), tail) =>
@@ -28,12 +28,12 @@ private[ghyll] trait DerivedDecoderInstances {
   ): StreamingDecoderResult[Map[String, Any]] =
     stream match {
       case Right(EndObject -> _) #:: tail => Right(acc -> tail)
-      case Right(Key(key) -> _) #:: tail =>
+      case Right(Key(key) -> _) #:: tail  =>
         fieldDecoders.fields.find(_.name === key) match {
           case None        => decodeKeys(TokenStream.skipValue(tail), acc, fieldDecoders)
           case Some(field) =>
-            field.decoder.decode(tail).flatMap {
-              case value -> remaining => decodeKeys(remaining, acc + (key -> value), fieldDecoders)
+            field.decoder.decode(tail).flatMap { case value -> remaining =>
+              decodeKeys(remaining, acc + (key -> value), fieldDecoders)
             }
         }
     }

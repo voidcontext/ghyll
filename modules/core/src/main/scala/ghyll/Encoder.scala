@@ -43,9 +43,8 @@ object Encoder {
   implicit def mapEncoder[F[_], A](implicit valueEncoder: Encoder[A]): Encoder[Map[String, A]] =
     (value) =>
       value
-        .foldLeft[StreamingEncoderResult](Right(LazyList[JsonToken](JsonToken.BeginObject))) {
-          case (result, (k, v)) =>
-            result.flatMap(rs => valueEncoder.encode(v).map(rs ++ LazyList(JsonToken.Key(k)) ++ _))
+        .foldLeft[StreamingEncoderResult](Right(LazyList[JsonToken](JsonToken.BeginObject))) { case (result, (k, v)) =>
+          result.flatMap(rs => valueEncoder.encode(v).map(rs ++ LazyList(JsonToken.Key(k)) ++ _))
         }
         .map(_ ++ LazyList(JsonToken.EndObject))
 

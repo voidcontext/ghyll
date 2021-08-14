@@ -70,9 +70,9 @@ object TokenStream {
 
     def addPos(stream: LazyList[Either[TokeniserError, JsonToken]], pos: List[Pos]): TokenStream =
       stream match {
-        case Right(head) #:: tail => Right(head -> pos)  #:: addPos(tail, currentPos(head, pos))
-        case Left(err) #:: _ => LazyList(Left(err))
-        case LazyList() => LazyList.empty
+        case Right(head) #:: tail => Right(head -> pos) #:: addPos(tail, currentPos(head, pos))
+        case Left(err) #:: _      => LazyList(Left(err))
+        case LazyList()           => LazyList.empty
 
       }
 
@@ -86,19 +86,19 @@ object TokenStream {
   def skipValue[F[_]](stream: TokenStream): TokenStream = {
     def skip(stream: TokenStream, stack: List[JsonToken]): TokenStream =
       stream match {
-          case Right((t @ (BeginArray | BeginObject)) -> _) #:: tail                            => skip(tail, t :: stack)
-          case Right((Null | Str(_) | Number(_) | Boolean(_) | Key(_)) -> _) #:: tail           =>
-            if (stack.isEmpty) tail
-            else skip(tail, stack)
-          case Right(EndArray -> _) #:: tail if (stack.headOption.exists(_ === BeginArray))   =>
-            if (stack.tail.isEmpty) tail
-            else skip(tail, stack.tail)
-          case Right(EndObject -> _) #:: tail if (stack.headOption.exists(_ === BeginObject)) =>
-            if (stack.tail.isEmpty) tail
-            else skip(tail, stack.tail)
-          case Right(t -> p) #:: _                                                               =>
-           LazyList(Left(NestingError(s"Nesting Error: got ${TokenName(t).show()} at $p")))
-        case Left(err) #:: _ =>
+        case Right((t @ (BeginArray | BeginObject)) -> _) #:: tail                          => skip(tail, t :: stack)
+        case Right((Null | Str(_) | Number(_) | Boolean(_) | Key(_)) -> _) #:: tail         =>
+          if (stack.isEmpty) tail
+          else skip(tail, stack)
+        case Right(EndArray -> _) #:: tail if (stack.headOption.exists(_ === BeginArray))   =>
+          if (stack.tail.isEmpty) tail
+          else skip(tail, stack.tail)
+        case Right(EndObject -> _) #:: tail if (stack.headOption.exists(_ === BeginObject)) =>
+          if (stack.tail.isEmpty) tail
+          else skip(tail, stack.tail)
+        case Right(t -> p) #:: _                                                            =>
+          LazyList(Left(NestingError(s"Nesting Error: got ${TokenName(t).show()} at $p")))
+        case Left(err) #:: _                                                                =>
           LazyList(Left(err))
 
       }
