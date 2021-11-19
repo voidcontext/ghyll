@@ -1,18 +1,14 @@
 package ghyll
 
-// import java.io.{InputStream, InputStreamReader}
-import java.io.{InputStream}
+import java.io.{InputStream, InputStreamReader}
 
-//import cats.ApplicativeError
+//import cats.Applicative
 import cats.effect.kernel.{Resource, Sync}
-import ghyll.json.JsonToken
 import cats.syntax.eq._
 import com.google.gson.stream.{JsonReader, JsonToken => GsonToken}
-// import fs2.{Pull, Stream}
 import ghyll.gson.Implicits._
-// import ghyll.json.JsonToken
+import ghyll.json.JsonToken
 import ghyll.json.JsonToken._
-import java.io.InputStreamReader
 
 object TokenStream {
 
@@ -20,14 +16,11 @@ object TokenStream {
     readerResource(json)
       .flatMap(reader => Resource.eval(readInput(reader)))
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   private def readInput[F[_]: Sync](reader: JsonReader): F[TokenStream] =
     Sync[F].delay {
 
-      def nextToken: LazyList[Either[TokeniserError, JsonToken]] =
-        if (reader.peek() === GsonToken.END_DOCUMENT) LazyList.empty
-        else {
-          ((reader.peek() match {
+      def readNext: Either[TokeniserError, JsonToken] =
+        reader.peek() match {
             case GsonToken.BEGIN_ARRAY  =>
               reader.beginArray()
               Right(JsonToken.BeginArray)
@@ -48,10 +41,15 @@ object TokenStream {
               reader.nextNull()
               Right(JsonToken.Null)
             case _                      => Left(UnimplementedToken)
-          }): Either[TokeniserError, JsonToken]) #:: nextToken
+          }
+
+      def nextToken: LazyList[Either[TokeniserError, JsonToken]] =
+        if (reader.peek() === GsonToken.END_DOCUMENT) LazyList.empty
+        else {
+          readNext #:: nextToken
         }
 
-      ((Left[TokeniserError, (JsonToken, List[Pos])](LazyHead)) #:: withPos(nextToken)).tail
+      withPos(nextToken)
     }
 
   private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonReader] =
@@ -69,14 +67,15 @@ object TokenStream {
       }
 
     def addPos(stream: LazyList[Either[TokeniserError, JsonToken]], pos: List[Pos]): TokenStream =
-      stream match {
-        case Right(head) #:: tail => Right(head -> pos) #:: addPos(tail, currentPos(head, pos))
-        case Left(err) #:: _      => LazyList(Left(err))
-        case LazyList()           => LazyList.empty
-
+      stream.headOption.fold[TokenStream](LazyList.empty) {
+        _.fold(
+          err => LazyList(Left(err)),
+          head => Right(head -> pos) #:: addPos(stream.tail, currentPos(head, pos))
+        )
       }
+   
 
-    addPos(stream, List.empty)
+   ((Left[TokeniserError, (JsonToken, List[Pos])](LazyHead)) #:: addPos(stream, List.empty)).tail
   }
 
   // implicit class StreamOps(stream: Stream[F, JsonToken]) {
@@ -84,24 +83,42 @@ object TokenStream {
   // }
 
   def skipValue[F[_]](stream: TokenStream): TokenStream = {
-    def skip(stream: TokenStream, stack: List[JsonToken]): TokenStream =
-      stream match {
-        case Right((t @ (BeginArray | BeginObject)) -> _) #:: tail                          => skip(tail, t :: stack)
-        case Right((Null | Str(_) | Number(_) | Boolean(_) | Key(_)) -> _) #:: tail         =>
-          if (stack.isEmpty) tail
-          else skip(tail, stack)
-        case Right(EndArray -> _) #:: tail if (stack.headOption.exists(_ === BeginArray))   =>
-          if (stack.tail.isEmpty) tail
-          else skip(tail, stack.tail)
-        case Right(EndObject -> _) #:: tail if (stack.headOption.exists(_ === BeginObject)) =>
-          if (stack.tail.isEmpty) tail
-          else skip(tail, stack.tail)
-        case Right(t -> p) #:: _                                                            =>
-          LazyList(Left(NestingError(s"Nesting Error: got ${TokenName(t).show()} at $p")))
-        case Left(err) #:: _                                                                =>
-          LazyList(Left(err))
 
-      }
+    def skip(s: TokenStream, stack: List[JsonToken]): TokenStream =
+      s.headOption
+        .map(
+          _.fold(
+            err => LazyList(Left(err)),
+            {
+              case (t @ (BeginArray | BeginObject)) -> _                          => skip(s.tail, t :: stack)
+              case (Null | Str(_) | Number(_) | Boolean(_) | Key(_)) -> _         =>
+                if (stack.isEmpty) s.tail
+                else skip(s.tail, stack)
+              case EndArray -> _ if (stack.headOption.exists(_ === BeginArray))   =>
+                if (stack.tail.isEmpty) s.tail
+                else skip(s.tail, stack.tail)
+              case EndObject -> _ if (stack.headOption.exists(_ === BeginObject)) =>
+                if (stack.tail.isEmpty) s.tail
+                else skip(s.tail, stack.tail)
+              case t -> p                                                         =>
+                LazyList(Left(NestingError(s"Nesting Error: got ${TokenName(t).show()} at $p")))
+            }
+          )
+        )
+        .getOrElse(
+          if (stack.isEmpty) LazyList.empty
+          else LazyList(Left(NestingError("Expected a token, but stream is empty")))
+        )
+
     skip(stream, List.empty)
   }
+
+  // object syntax {
+  //   implicit class TokenStreamOps(t: TokenStream) {
+  //     def withNext[F[_], E, A](ifEmpty: E, ef: TokeniserError => E)(f: ((JsonToken, List[Pos])) => F[Either[E, A]])(
+  //       implicit F: Applicative[F]
+  //     ): F[Either[E, A]] =
+  //       t.headOption.map(_.fold[F[Either[E, A]]](te => F.pure(Left(ef(te))), f)).getOrElse(F.pure(Left(ifEmpty)))
+  //   }
+  // }
 }

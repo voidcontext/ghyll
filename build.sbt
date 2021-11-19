@@ -3,7 +3,7 @@ import xerial.sbt.Sonatype._
 val libraryName = "ghyll"
 val website = "https://github.com/voidcontext/ghyll"
 
-val scala2 = "2.13.4"
+val scala2 = "2.13.6"
 val scala3 = "3.0.1"
 val supportedScalaVersions = List(scala2, scala3)
 
@@ -25,9 +25,9 @@ val catsVersion = "2.6.1"
 val catsEffectVersion = "3.1.1"
 val fs2Version = "3.0.3"
 val gsonVersion = "2.8.6"
-val scalaTestVersion = "3.2.9"
+val scalaTestVersion = "3.2.10"
 val declineVersion = "2.0.0"
-val scalatestScalacheckVersion = "3.2.9.0"
+val scalatestScalacheckVersion = "3.2.10.0"
 val scalaCheckVersion = "1.15.4"
 
 lazy val publishSettings = List(

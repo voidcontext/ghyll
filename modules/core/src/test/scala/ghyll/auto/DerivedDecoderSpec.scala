@@ -2,7 +2,6 @@ package ghyll.auto
 
 // import fs2.Stream
 import ghyll.TestDecoder
-// import ghyll.TokenStream._
 import ghyll.json.JsonToken
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -23,7 +22,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
               JsonToken.Key("bar") ::
               JsonToken.Str("foobar") ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.EndObject ::
               Nil
           )
@@ -36,7 +35,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
             Foo("foobar", 42),
             JsonToken.BeginObject ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.Key("bar") ::
               JsonToken.Str("foobar") ::
               JsonToken.EndObject ::
@@ -51,7 +50,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
             Foo("foobar", 42),
             JsonToken.BeginObject ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.Key("foo") ::
               JsonToken.Boolean(true) ::
               JsonToken.Key("foo2") ::
@@ -77,7 +76,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
             FooOption(None, 42),
             JsonToken.BeginObject ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.EndObject ::
               Nil
           )
@@ -90,7 +89,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
             FooOption(Option("It's here!"), 42),
             JsonToken.BeginObject ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.Key("bar") ::
               JsonToken.Str("It's here!") ::
               JsonToken.EndObject ::
@@ -106,7 +105,7 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
             FooOption(None, 42),
             JsonToken.BeginObject ::
               JsonToken.Key("baz") ::
-              JsonToken.Number("42") ::
+              JsonToken.Number(42) ::
               JsonToken.Key("bar") ::
               JsonToken.Null ::
               JsonToken.EndObject ::

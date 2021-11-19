@@ -6,8 +6,8 @@ package object ghyll extends Decoding {
   type TokenStream = LazyList[Either[TokeniserError, (JsonToken, List[Pos])]]
 
   type DecoderResult[A] = Either[StreamingDecoderError, A]
-  type EncoderResult = Either[StreamingEncoderError, Unit]
+//  type EncoderResult = Either[StreamingEncoderError, Unit]
 
   private[ghyll] type StreamingDecoderResult[A] = Either[StreamingDecoderError, (A, TokenStream)]
-  private[ghyll] type StreamingEncoderResult = Either[StreamingEncoderError, LazyList[JsonToken]]
+  private[ghyll] type StreamingEncoderResult = LazyList[Either[StreamingEncoderError, JsonToken]]
 }

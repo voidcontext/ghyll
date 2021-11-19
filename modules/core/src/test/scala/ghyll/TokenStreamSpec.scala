@@ -34,30 +34,33 @@ class TokenStreamSpec extends AnyWordSpec with Matchers with TestTokenStream {
 
   "TokenStream.withPos" should {
     "preserve the orginal tokens" in {
-      val tokens = wrapTokens(List(
-        BeginObject,
-        Key("foo"),
-        Str("bar"),
-        Key("baz"),
-        BeginObject,
-        Key("something"),
-        Null,
-        EndObject,
-        EndObject
-      ))
+      val tokens = wrapTokens(
+        List(
+          BeginObject,
+          Key("foo"),
+          Str("bar"),
+          Key("baz"),
+          BeginObject,
+          Key("something"),
+          Null,
+          EndObject,
+          EndObject
+        )
+      )
 
-        TokenStream
-          .withPos(tokens)
-          .toList.map(_.map(_._1)) should be(tokens)
+      TokenStream
+        .withPos(tokens)
+        .toList
+        .map(_.map(_._1)) should be(tokens)
     }
   }
 
   "TokenStream.skipValue" should {
     "skip scalar value" in {
       val tokens = tokenStream(Str("foo") :: Number("1") :: Str("bar") :: Nil)
-        TokenStream
-          .skipValue(tokens)
-          .toList should be(tokens.tail)
+      TokenStream
+        .skipValue(tokens)
+        .toList should be(tokens.tail)
 
     }
 
@@ -65,18 +68,18 @@ class TokenStreamSpec extends AnyWordSpec with Matchers with TestTokenStream {
       val obj1 = tokenStream(List(BeginObject, Key("foo"), Number("1"), Key("bar"), Number("2"), EndObject))
       val rest = tokenStream(List(Key("obj2"), BeginObject, EndObject))
 
-        TokenStream
-          .skipValue(obj1 ++ rest)
-          .toList should be(rest)
+      TokenStream
+        .skipValue(obj1 #::: rest)
+        .toList should be(rest)
     }
 
     "skip a full list" in {
       val array1 = tokenStream(List(BeginArray, Number("1"), Number("2"), EndArray))
       val rest = tokenStream(List(Key("obj2"), BeginArray, EndArray))
 
-        TokenStream
-          .skipValue(array1 ++ rest)
-          .toList should be(rest)
+      TokenStream
+        .skipValue(array1 ++ rest)
+        .toList should be(rest)
     }
   }
 }

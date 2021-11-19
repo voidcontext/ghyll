@@ -3,19 +3,23 @@ package ghyll
 // import java.time.LocalDate
 
 // import fs2.Stream
+import java.time.LocalDate
+
+import cats.kernel.Eq
+import cats.syntax.eq._
 import ghyll.Generators._
-// import ghyll.TokenStream._
 import ghyll.json.JsonToken
 import ghyll.json.JsonToken.TokenName
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
-import java.time.LocalDate
 
 class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecoder {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 500)
+
+  implicit val eq: Eq[StreamingDecoderError] = Eq.by(_.toString())
 
   "Decoder" should {
     "decode a JSON" when {
@@ -30,7 +34,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "value is an Int" in {
         check(
           Prop.forAll(int) { case (int) =>
-            testDecoder(int, JsonToken.Number(int.toString()) :: Nil)
+            testDecoder(int, JsonToken.Number(int) :: Nil)
           }
         )
       }
@@ -64,7 +68,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
           Prop.forAll(Gen.option(int)) { case (maybeInt) =>
             testDecoder(
               maybeInt,
-              maybeInt.fold[JsonToken](JsonToken.Null)(i => JsonToken.Number(i.toString)) :: Nil
+              maybeInt.fold[JsonToken](JsonToken.Null)(i => JsonToken.Number(i)) :: Nil
             )
           }
         )
@@ -75,10 +79,24 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
           Prop.forAll(Gen.listOf(int)) { case (ints) =>
             testDecoder(
               ints,
-              List(JsonToken.BeginArray) ++ ints.map(i => JsonToken.Number(i.toString())) ++ List(JsonToken.EndArray)
+              List(JsonToken.BeginArray) ++ ints.map(i => JsonToken.Number(i)) ++ List(JsonToken.EndArray)
             )
           }
         )
+      }
+
+      "value is a very long List (stack safe)" in {
+        check {
+          val range = List.range(1, 100000)
+
+          val result = implicitly[Decoder[List[Int]]].decode(
+            tokenStream(
+              JsonToken.BeginArray :: range.map(n => JsonToken.Number(n)) ++ List(JsonToken.EndArray)
+            )
+          )
+
+          ((result.map(_._1).eqv(Right(range))): Prop) :| s"${result.map(_._1.length)} vs ${range.length}"
+        }
       }
 
       "value is a map" in {
@@ -96,6 +114,26 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
           }
         )
       }
+
+      "value is a very large map (stack safe)" in {
+        check {
+          val range = List.range(1, 100000)
+
+          val expected = range.foldLeft(Map.empty[String, Int]) { case (m, i) => m + (i.toString() -> i) }
+
+          val result = implicitly[Decoder[Map[String, Int]]].decode(
+            tokenStream(
+              JsonToken.BeginObject :: range.flatMap(n =>
+                JsonToken.Key(n.toString) #:: JsonToken.Number(n) #:: LazyList.empty
+              ) ++ List(JsonToken.EndObject)
+            )
+          )
+
+          ((result
+            .map(_._1.toSet.diff(expected.toSet))
+            .eqv(Right(Set.empty))): Prop) :| s"${result.map(_._1.toList.length)} vs ${range.length}"
+        }
+      }
     }
 
     "return an error result" when {
@@ -111,7 +149,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a Int, but got something else" in {
         check(
           testDecoderFailure[Int](
-            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Number[Int]].show()}, but got ${TokenName[JsonToken.BeginObject].show()} at List()",
             JsonToken.BeginObject :: JsonToken.EndObject :: Nil
           )
         )
@@ -154,11 +192,11 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a List, but not all item has the same type" in {
         check(
           testDecoderFailure[List[Int]](
-            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
+            s"Expected ${TokenName[JsonToken.Number[Int]].show()}, but got ${TokenName[JsonToken.Str].show()} at List(ArrayIndex(2), Array)",
             JsonToken.BeginArray ::
-              JsonToken.Number("1") ::
-              JsonToken.Number("2") ::
-              JsonToken.Str("3") ::
+              JsonToken.Number(1) ::
+              JsonToken.Number(1) ::
+              JsonToken.Str("1") ::
               JsonToken.EndArray :: Nil
           )
         )
@@ -176,7 +214,7 @@ class DecoderSpec extends AnyWordSpec with Checkers with Matchers with TestDecod
       "expected value is a Optional, but has the wrong type" in {
         check(
           testDecoderFailure[Option[Int]](
-            s"Expected ${TokenName[JsonToken.Number[String]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
+            s"Expected ${TokenName[JsonToken.Number[Int]].show()}, but got ${TokenName[JsonToken.Str].show()} at List()",
             JsonToken.Str("1") :: Nil
           )
         )

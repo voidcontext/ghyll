@@ -1,6 +1,8 @@
 package ghyll.auto
 
 // import cats.effect.IO
+import cats.instances.lazyList._
+import cats.syntax.traverse._
 import ghyll._
 import ghyll.json.JsonToken._
 import org.scalatest.matchers.should.Matchers
@@ -72,6 +74,13 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
           )(fooOptionDecoder)
         )
       }
+    }
+
+    "be stack safe" in {
+      case class Val(c: Int)
+      case class Foo(bar: List[Val])
+
+      implicitly[DerivedEncoder[Foo]].encode(Foo(List.range(1, 100000).map(Val(_)))).sequence shouldBe a[Right[_, _]]
     }
   }
 }

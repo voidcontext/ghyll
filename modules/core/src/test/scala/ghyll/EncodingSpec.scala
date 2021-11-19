@@ -15,11 +15,7 @@ class EncodingSpec extends AnyWordSpec with Matchers with Encoding {
     "encode and write the JSON into the given stream" in {
       val out = new ByteArrayOutputStream()
 
-      encode[IO, Foo](Foo("this is a string", 42), out).flatMap { result =>
-        IO.delay {
-          result should be(Right(()))
-        }
-      }
+      encode[IO, Foo](Foo("this is a string", 42), out)
         .unsafeRunSync()
 
       out.toString() should be("""{"bar":"this is a string","baz":42}""")
