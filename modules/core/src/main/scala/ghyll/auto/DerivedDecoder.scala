@@ -2,6 +2,6 @@ package ghyll.auto
 
 import ghyll.Decoder
 
-abstract class DerivedDecoder[A] extends Decoder[A]
+abstract class DerivedDecoder[F[_], A] extends Decoder[F, A]
 
 object DerivedDecoder extends DerivedDecoderInstances {}

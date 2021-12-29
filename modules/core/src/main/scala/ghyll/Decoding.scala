@@ -3,14 +3,12 @@ package ghyll
 import java.io.{File, FileInputStream, InputStream}
 
 import cats.effect.{Resource, Sync}
-import cats.syntax.eq._
 import fs2.Stream
-import ghyll.json.JsonToken._
 import ghyll.jsonpath._
 
 private[ghyll] trait Decoding {
   def decodeArray[F[_]: Sync, T](json: InputStream)(implicit
-    d: Decoder[T]
+    d: Decoder[F, T]
   ): Resource[F, Stream[F, DecoderResult[T]]] = ???
 
   /**
@@ -21,7 +19,7 @@ private[ghyll] trait Decoding {
    *   the file containing the JSON
    * @return
    */
-  def decodeObject[F[_]: Sync, T](json: File)(implicit d: Decoder[T]): Resource[F, DecoderResult[T]] =
+  def decodeObject[F[_]: Sync, T](json: File)(implicit d: Decoder[F, T]): Resource[F, DecoderResult[T]] =
     decodeObject(JNil, json)
 
   /**
@@ -35,7 +33,7 @@ private[ghyll] trait Decoding {
    * @return
    */
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: File)(implicit
-    d: Decoder[T]
+    d: Decoder[F, T]
   ): Resource[F, DecoderResult[T]] =
     fileInputStreamResource[F](json).flatMap(decodeObject(path, _))
 
@@ -46,7 +44,7 @@ private[ghyll] trait Decoding {
    * @param json
    *   @return
    */
-  def decodeObject[F[_]: Sync, T](json: InputStream)(implicit d: Decoder[T]): Resource[F, DecoderResult[T]] =
+  def decodeObject[F[_]: Sync, T](json: InputStream)(implicit d: Decoder[F, T]): Resource[F, DecoderResult[T]] =
     decodeObject(JNil, json)
 
   /**
@@ -59,17 +57,8 @@ private[ghyll] trait Decoding {
    * @return
    */
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: InputStream)(implicit
-    d: Decoder[T]
-  ): Resource[F, DecoderResult[T]] =
-    TokenStream.fromJson[F](json).map { stream =>
-      val _ = path
-
-      stream match {
-        case Right(BeginObject -> _) #:: tail =>
-          d.decode(tail).map(_._1)
-        case _                                => Left(StreamingDecodingFailure("Not an object!"))
-      }
-    }
+    d: Decoder[F, T]
+  ): Resource[F, DecoderResult[T]] = ???
 
   /**
    * Shortcut of [[decodeKeyValues[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]], which safely
@@ -81,7 +70,7 @@ private[ghyll] trait Decoding {
    */
   def decodeKeyValues[F[_]: Sync, T](
     json: File
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
+  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
     decodeKeyValues(JNil, json)
 
   /**
@@ -97,7 +86,7 @@ private[ghyll] trait Decoding {
   def decodeKeyValues[F[_]: Sync, T](
     path: JsonPath,
     json: File
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
+  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
     fileInputStreamResource[F](json)
       .flatMap(decodeKeyValues(path, _))
 
@@ -111,7 +100,7 @@ private[ghyll] trait Decoding {
    */
   def decodeKeyValues[F[_]: Sync, T](
     json: InputStream
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
+  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
     decodeKeyValues(JNil, json)
 
   /**
@@ -133,75 +122,13 @@ private[ghyll] trait Decoding {
   def decodeKeyValues[F[_]: Sync, T](
     path: JsonPath,
     json: InputStream
-  )(implicit d: Decoder[T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
-    TokenStream
-      .fromJson[F](json)
-      .map(traversePath(path))
-      .map {
-        case Right(BeginObject -> _) #:: tail =>
-          def decodeNext(s: TokenStream): Option[(DecoderResult[(String, T)], TokenStream)] =
-            s.headOption.map {
-              _.fold(
-                _ => Some(Left(StreamingDecodingFailure("Tokenizer error.")) -> LazyList.empty),
-                {
-                  case EndObject -> _ => None
-                  case Key(key) -> _  =>
-                    Some(
-                      d.decode(s.tail)
-                        .fold[(DecoderResult[(String, T)], TokenStream)](
-                          err => Left(err) -> s.tail,
-                          { case (value, remaining) => Right(key -> value) -> remaining }
-                        )
-                    )
-                  case _              =>
-                    Some(Left(StreamingDecodingFailure("Unexpected token")) -> LazyList.empty)
-                }
-              )
-            }.getOrElse(Some(Left(StreamingDecodingFailure("Unexpected end of token stream")) -> LazyList.empty))
+  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] = ???
 
-          Stream.unfold(tail)(decodeNext)
-        case _                                =>
-          Stream.emit(Left(StreamingDecodingFailure("Not an object")))
-      }
+  // private def traversePath(
+  //   path: JsonPath
+  // )(reader: JsonTokenReader): Unit = ???
 
-  private def traversePath(
-    path: JsonPath
-  )(stream: TokenStream): TokenStream =
-    path match {
-      case JNil            => stream
-      case phead >:: ptail =>
-        stream.headOption.map {
-          _.fold(
-            error => LazyList(Left(error)),
-            {
-              case BeginObject -> _ => traversePath(ptail)(skipUntil(phead, stream.tail))
-              case token -> pos     =>
-                LazyList(
-                  Left(
-                    NestingError(
-                      s"Expected ${TokenName[BeginObject].show()} but got ${TokenName(token).show()} at $pos "
-                    )
-                  )
-                )
-
-            }
-          )
-        }.getOrElse(LazyList(Left(JsonPathError)))
-    }
-
-  private def skipUntil(name: String, stream: TokenStream): TokenStream =
-    stream.headOption
-      .map(
-        _.fold(
-          _ => LazyList(Left(JsonPathError)),
-          {
-            case Key(n) -> _ if n === name => stream.tail
-            case Key(_) -> _               => skipUntil(name, TokenStream.skipValue(stream.tail))
-            case _                         => LazyList(Left(JsonPathError))
-          }
-        )
-      )
-      .getOrElse(LazyList(Left(JsonPathError)))
+  // private def skipUntil(name: String, reader: JsonTokenReader): Unit = ???
 
   private def fileInputStreamResource[F[_]: Sync](file: File): Resource[F, InputStream] =
     Resource.fromAutoCloseable(Sync[F].delay(new FileInputStream(file)))

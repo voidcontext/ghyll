@@ -2,52 +2,30 @@ package ghyll
 
 import java.time.LocalDate
 
-import ghyll.json.JsonToken
+import ghyll.json.JsonTokenWriter
 
-trait Encoder[A] {
+trait Encoder[F[_], A] {
   type For = A
 
-  def encode(value: A): StreamingEncoderResult
+  def encode(value: A, writer: JsonTokenWriter[F, A]): StreamingEncoderResult[F]
 }
 
 object Encoder {
-  def apply[A](implicit ev: Encoder[A]) = ev
+  def apply[F[_], A](implicit ev: Encoder[F, A]) = ev
 
-  implicit def stringEncoder: Encoder[String] =
-    (value) => LazyList(Right(JsonToken.Str(value)))
+  implicit def stringEncoder[F[_]]: Encoder[F, String] = ???
 
-  implicit def intEncoder: Encoder[Int] =
-    (value) => LazyList(Right(JsonToken.Number(value)))
+  implicit def intEncoder[F[_]]: Encoder[F, Int] = ???
 
-  implicit def booleanEncoder: Encoder[Boolean] =
-    (value) => LazyList(Right(JsonToken.Boolean(value)))
+  implicit def booleanEncoder[F[_]]: Encoder[F, Boolean] = ???
 
-  implicit def bigDecimalEncoder: Encoder[BigDecimal] =
-    (value) => LazyList(Right(JsonToken.Number(value)))
+  implicit def bigDecimalEncoder[F[_]]: Encoder[F, BigDecimal] = ???
 
-  implicit def localDateEncoder: Encoder[LocalDate] =
-    (value) => LazyList(Right(JsonToken.Str(value.toString())))
+  implicit def localDateEncoder[F[_]]: Encoder[F, LocalDate] = ???
 
-  implicit def optionEncoder[F[_], A](implicit encoder: Encoder[A]): Encoder[Option[A]] =
-    (value) => value.fold[StreamingEncoderResult](LazyList(Right(JsonToken.Null)))(encoder.encode)
+  implicit def optionEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, Option[A]] = ???
 
-  implicit def listEncoder[F[_], A](implicit encoder: Encoder[A]): Encoder[List[A]] = {
-    def next(xs: List[A]): StreamingEncoderResult =
-      Left(InternalResult) #:: (xs match {
-        case head :: tail => encoder.encode(head) ++ next(tail).tail
-        case Nil          => LazyList(Right(JsonToken.EndArray))
-      })
+  implicit def listEncoder[F[_], A](implicit encoder: Encoder[F, A]): Encoder[F, List[A]] =  ???
 
-    (value) => Right(JsonToken.BeginArray) #:: next(value).tail
-  }
-
-  implicit def mapEncoder[F[_], A](implicit valueEncoder: Encoder[A]): Encoder[Map[String, A]] = {
-    def next(xs: List[(String, A)]): StreamingEncoderResult =
-      Left(InternalResult) #:: (xs match {
-        case (key, value) :: tail => Right(JsonToken.Key(key)) #:: valueEncoder.encode(value) ++ next(tail).tail
-        case Nil                  => LazyList(Right(JsonToken.EndObject))
-      })
-
-    (value) => Right(JsonToken.BeginObject) #:: next(value.toList).tail
-  }
+  implicit def mapEncoder[F[_], A](implicit valueEncoder: Encoder[F, A]): Encoder[F, Map[String, A]] = ???
 }
