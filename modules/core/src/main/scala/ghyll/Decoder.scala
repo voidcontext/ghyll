@@ -8,6 +8,7 @@ import scala.reflect.ClassTag
 import cats.syntax.either._
 // import ghyll.TokenStream.syntax._
 import ghyll.json.JsonToken
+import ghyll.json.JsonValue
 import ghyll.json.JsonToken.TokenName
 //import scala.annotation.tailrec
 import cats.Eval
@@ -20,7 +21,7 @@ object Decoder {
   def apply[A](implicit ev: Decoder[A]) = ev
 
   implicit def stringDecoder: Decoder[String] =
-    createDecoder[String, JsonToken.Str] { case JsonToken.Str(v) => Right(v) }
+    createDecoder[String, JsonToken.Str] { case JsonValue.Str(v) => Right(v) }
 
   implicit def intDecoder: Decoder[Int] =
     createDecoder[Int, JsonToken.Number[Int]] { case JsonToken.Number(v: Int) =>
