@@ -6,6 +6,10 @@ import ghyll.{TestDecoder, TestEncoder}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
+import ghyll.json.JsonValue
+import ghyll.utils.EitherOps
+import ghyll.json.JsonTokenReader.JsonTokenReaderResult
+import cats.effect.IO
 
 class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with TestDecoder with Checkers {
   case class Foo(bar: String)
@@ -20,16 +24,16 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
       check(
         testDecoder(
           Response(WrappedFoo(Foo("baz"))),
-          JsonToken.BeginObject ::
-            JsonToken.Key("data") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("foo") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
+          JsonToken.BeginObject.left ::
+            JsonValue.Key("data").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("foo").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("bar").right ::
+            JsonValue.Str("baz").right ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
             Nil
         )
       )
@@ -41,16 +45,16 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
       check(
         testEncoder(
           Response(WrappedFoo(Foo("baz"))),
-          JsonToken.BeginObject ::
-            JsonToken.Key("data") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("foo") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
+          JsonToken.BeginObject.left ::
+            JsonValue.Key("data").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("foo").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("bar").right ::
+            JsonValue.Str("baz").right ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
             Nil
         )
       )
@@ -59,23 +63,23 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
     "derive codecs automatically for case classes" in {
       import ghyll.auto._
 
-      def test[A](value: A, json: List[JsonToken])(implicit c: Codec[A]) = {
+      def test[A](value: A, json: List[JsonTokenReaderResult])(implicit c: Codec[IO, A]) = {
         testDecoder(value, json) && testEncoder(value, json)
       }
 
       check(
         test(
           Response(WrappedFoo(Foo("baz"))),
-          JsonToken.BeginObject ::
-            JsonToken.Key("data") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("foo") ::
-            JsonToken.BeginObject ::
-            JsonToken.Key("bar") ::
-            JsonToken.Str("baz") ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
-            JsonToken.EndObject ::
+          JsonToken.BeginObject.left ::
+            JsonValue.Key("data").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("foo").right ::
+            JsonToken.BeginObject.left ::
+            JsonValue.Key("bar").right ::
+            JsonValue.Str("baz").right ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
+            JsonToken.EndObject.left ::
             Nil
         )
       )

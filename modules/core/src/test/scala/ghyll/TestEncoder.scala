@@ -1,18 +1,14 @@
 package ghyll
 
-import ghyll.json.JsonToken
 import org.scalacheck.Prop
+import cats.effect.IO
+import ghyll.json.JsonTokenReader.JsonTokenReaderResult
 
 @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 trait TestEncoder {
-  def testEncoder[A](value: A, expected: List[JsonToken])(implicit encoder: Encoder[A]): Prop =
-    testEncoder(value, LazyList.from(expected).map(t => Right(t)))
+  def testEncoder[A](value: A, expected: List[JsonTokenReaderResult])(implicit encoder: Encoder[IO, A]): Prop = ???
 
-  def testEncoder[A](value: A, expected: StreamingEncoderResult)(implicit encoder: Encoder[A]): Prop = {
-    val actual = encoder.encode(value)
-    ((actual == expected): Prop) :| s"expected $expected, but got $actual"
-  }
+  def testEncoder[A](value: A, expected: StreamingEncoderResult[IO])(implicit encoder: Encoder[IO, A]): Prop = ???
 
-  def byteArrayToString(ba: Array[Byte]): String =
-    ba.toList.map(_.toInt).toString()
+  def byteArrayToString(ba: Array[Byte]): String =  ???
 }

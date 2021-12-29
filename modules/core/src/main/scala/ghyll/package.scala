@@ -1,5 +1,7 @@
 package object ghyll extends Decoding {
 
+  type Json
+
   type DecoderResult[A] = Either[StreamingDecoderError, A]
   type EncoderResult = Either[StreamingEncoderError, Unit]
 

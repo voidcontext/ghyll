@@ -8,17 +8,20 @@ import cats.syntax.functor._
 import ghyll.Pos
 import cats.effect.Ref
 import cats.data.EitherT
+import ghyll.json.JsonTokenReader.JsonTokenReaderResult
 
 trait JsonTokenReader[F[_]] {
-  def next: F[Either[TokeniserError, (List[Pos], Either[JsonToken, JsonValue])]]
+  def next: F[Either[TokeniserError, (List[Pos], JsonTokenReaderResult)]]
   def peek: F[Either[TokeniserError, (List[Pos], JsonToken)]]
 }
 
 object JsonTokenReader {
+  type JsonTokenReaderResult = Either[JsonToken.Delimiter, JsonValue]
+
   private final case class ReadResult[F[_]](
     token: JsonToken,
     stack:  List[Pos],
-    consume:  F[Either[JsonToken, JsonValue]]
+    consume:  F[JsonTokenReaderResult]
   )
 
   implicit class RightOps[A](value: A) {
@@ -35,7 +38,7 @@ object JsonTokenReader {
               stack <- EitherT.liftF[F, TokeniserError, List[Pos]](stackRef.get)
               readResult <- EitherT.apply(read(reader, stack))
               _ <- EitherT.liftF[F, TokeniserError, Unit](stackRef.set(readResult.stack))
-              result <- EitherT.liftF[F, TokeniserError, Either[JsonToken, JsonValue]](readResult.consume)
+              result <- EitherT.liftF[F, TokeniserError, JsonTokenReaderResult](readResult.consume)
             } yield (readResult.stack, result)
           ).value
 

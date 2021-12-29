@@ -9,6 +9,6 @@ object Codec {
     new Codec[F, A] {
       def decode(reader: JsonTokenReader[F]): StreamingDecoderResult[F, A] = decoder.decode(reader)
 
-      def encode(value: A, writer: JsonTokenWriter[F, A]): StreamingEncoderResult[F] = encoder.encode(value, writer)
+      def encode(value: A, writer: JsonTokenWriter[F]): StreamingEncoderResult[F] = encoder.encode(value, writer)
     }
 }

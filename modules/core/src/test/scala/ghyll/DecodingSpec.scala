@@ -11,18 +11,18 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class DecodingSpec extends AnyWordSpec with Matchers {
   case class Foo(bar: String, baz: Int)
-  implicit val fooDecoder: Decoder[Foo] = deriveDecoder
+  implicit val fooDecoder: Decoder[IO, Foo] = deriveDecoder
 
   case class FooList(bar: List[Int])
-  implicit val fooListDecoder: Decoder[FooList] = deriveDecoder
+  implicit val fooListDecoder: Decoder[IO, FooList] = deriveDecoder
 
   case class FooOption(bar: Option[String], baz: Int)
-  implicit val fooOptionDecoder: Decoder[FooOption] = deriveDecoder
+  implicit val fooOptionDecoder: Decoder[IO, FooOption] = deriveDecoder
 
   case class Data(value: BigDecimal, additional: Option[List[String]])
-  implicit val dataDecoder: Decoder[Data] = deriveDecoder
+  implicit val dataDecoder: Decoder[IO, Data] = deriveDecoder
   case class Obj(name: String, bool: Option[Boolean], data: Option[Data])
-  implicit val objDecoder: Decoder[Obj] = deriveDecoder
+  implicit val objDecoder: Decoder[IO, Obj] = deriveDecoder
 
   val fileSimple = new File("modules/core/src/test/resources/test-object-simple.json")
   val fileNested = new File("modules/core/src/test/resources/test-object.json")

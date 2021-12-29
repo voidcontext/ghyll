@@ -8,20 +8,23 @@ sealed trait JsonToken
 object JsonToken {
   implicit val eq: Eq[JsonToken] = Eq.fromUniversalEquals
 
+  sealed trait Delimiter extends JsonToken
+
   type BeginObject = BeginObject.type
   type EndObject = EndObject.type
   type BeginArray = BeginArray.type
   type EndArray = EndArray.type
+
   type Key = Key.type
   type Str = Str.type
   type Number = Number.type
   type Boolean = Boolean.type
   type Null = Null.type
 
-  case object BeginObject extends JsonToken
-  case object EndObject extends JsonToken
-  case object BeginArray extends JsonToken
-  case object EndArray extends JsonToken
+  case object BeginObject extends Delimiter
+  case object EndObject extends Delimiter
+  case object BeginArray extends Delimiter
+  case object EndArray extends Delimiter
 
   case object Key extends JsonToken
   case object Str extends JsonToken

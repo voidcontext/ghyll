@@ -7,7 +7,7 @@ import ghyll.json.JsonTokenWriter
 trait Encoder[F[_], A] {
   type For = A
 
-  def encode(value: A, writer: JsonTokenWriter[F, A]): StreamingEncoderResult[F]
+  def encode(value: A, writer: JsonTokenWriter[F]): StreamingEncoderResult[F]
 }
 
 object Encoder {

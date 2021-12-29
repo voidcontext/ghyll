@@ -1,27 +1,35 @@
 package ghyll
 
 import cats.instances.either._
-import cats.instances.lazyList._
+import cats.instances.list._
 import cats.kernel.Eq
 import cats.syntax.eq._
 import ghyll.Generators._
-import ghyll.json.JsonToken
+import ghyll.json.{JsonToken, JsonValue}
 import org.scalacheck.{Gen, Prop}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
+import cats.effect.IO
+import ghyll.json.JsonTokenReader.JsonTokenReaderResult
+import ghyll.json.TestJsonTokenWriter
+import cats.effect.unsafe.implicits.global
 
-class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTokenStream {
+class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder {
   implicit override val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 20000)
 
   implicit val eq: Eq[StreamingEncoderError] = Eq.by(_.toString())
+
+  implicit val jsonTokenDelimiterEq: Eq[JsonToken.Delimiter] = Eq.fromUniversalEquals
+  implicit val jsonValueEq: Eq[JsonValue] = Eq.fromUniversalEquals
+  
 
   "Encoder" should {
     "encode json" when {
       "value is a String" in {
         check(
           Prop.forAll(string) { string =>
-            testEncoder(string, LazyList(Right(JsonToken.Str(string))))
+            testEncoder(string, List(Right(JsonValue.Str(string))))
           }
         )
       }
@@ -29,7 +37,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
       "value is an Int" in {
         check(
           Prop.forAll(int) { i =>
-            testEncoder(i, LazyList(Right(JsonToken.Number(i))))
+            testEncoder(i, List(Right(JsonValue.Number(i))))
           }
         )
       }
@@ -37,7 +45,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
       "value is a Boolean" in {
         check(
           Prop.forAll(boolean) { b =>
-            testEncoder(b, LazyList(Right(JsonToken.Boolean(b))))
+            testEncoder(b, List(Right(JsonValue.Boolean(b))))
           }
         )
       }
@@ -45,7 +53,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
       "value is a BigDecimal" in {
         check(
           Prop.forAll(bigDecimal) { bigDecimal =>
-            testEncoder(bigDecimal, LazyList(Right(JsonToken.Number(bigDecimal))))
+            testEncoder(bigDecimal, List(Right(JsonValue.Number(bigDecimal))))
           }
         )
       }
@@ -53,7 +61,7 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
       "value is a LocalDate" in {
         check(
           Prop.forAll(localDate) { localDate =>
-            testEncoder(localDate, LazyList(Right(JsonToken.Str(localDate.toString()))))
+            testEncoder(localDate, List(Right(JsonValue.Str(localDate.toString()))))
           }
         )
       }
@@ -63,8 +71,8 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
           Prop.forAll(Gen.listOf(int)) { case (ints) =>
             testEncoder(
               ints,
-              Right(JsonToken.BeginArray) #:: LazyList.from(ints).map(i => Right(JsonToken.Number(i))) ++ LazyList(
-                Right(JsonToken.EndArray)
+              Left(JsonToken.BeginArray) :: ints.map(i => Right(JsonValue.Number(i))) ++ List(
+                Left(JsonToken.EndArray)
               )
             )
           }
@@ -73,16 +81,18 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
 
       "value is a very long List (stack safety)" in {
         check {
-          val range = LazyList.range(1, 100000)
+          val writer = TestJsonTokenWriter[IO]
 
-          val result = implicitly[Encoder[List[Int]]].encode(range.toList)
+          val range = List.range(1, 100000)
 
-          val expected: StreamingEncoderResult =
-            Right(JsonToken.BeginArray) #:: range.map(n => Right(JsonToken.Number(n))) #::: LazyList(
-              Right(JsonToken.EndArray)
+          implicitly[Encoder[IO, List[Int]]].encode(range.toList, writer).unsafeRunSync()
+
+          val expected: List[JsonTokenReaderResult] =
+            Left(JsonToken.BeginArray) :: range.map(n => Right(JsonValue.Number(n))) ++ List(
+              Left(JsonToken.EndArray)
             )
 
-          ((result.eqv(expected)): Prop) //:| s"${result.map(_.length)} vs ${expected.map(_.length)}"
+          ((writer.written.unsafeRunSync().eqv(expected)): Prop) //:| s"${result.map(_.length)} vs ${expected.map(_.length)}"
         }
       }
 
@@ -91,8 +101,8 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
           Prop.forAll(Gen.option(int)) { case (maybeInt) =>
             testEncoder(
               maybeInt,
-              maybeInt.fold[StreamingEncoderResult](LazyList(Right(JsonToken.Null)))(i =>
-                LazyList(Right(JsonToken.Number(i)))
+              maybeInt.fold[List[JsonTokenReaderResult]](List(Right(JsonValue.Null)))(i =>
+                List(Right(JsonValue.Number(i)))
               )
             )
           }
@@ -105,16 +115,18 @@ class EncoderSpec extends AnyWordSpec with Checkers with TestEncoder with TestTo
 
       "value is a large map (stack safety)" in {
         check {
-          val range = LazyList.range(1, 100000)
+          val writer = TestJsonTokenWriter[IO]
+          val range = List.range(1, 100000)
           val map = range.foldLeft(Map.empty[String, Int]) { case (m, i) => m + (i.toString() -> i) }
 
-          val result = implicitly[Encoder[Map[String, Int]]].encode(map)
+          implicitly[Encoder[IO, Map[String, Int]]].encode(map, writer).unsafeRunSync()
 
-          val expected: StreamingEncoderResult =
-            Right(JsonToken.BeginObject) #:: (range.flatMap(n =>
-              Right(JsonToken.Key(n.toString)) #:: Right(JsonToken.Number(n)) #:: LazyList.empty
-            ) ++ LazyList(Right(JsonToken.EndObject)))
+          val expected: List[JsonTokenReaderResult] =
+            Left(JsonToken.BeginObject) :: (range.flatMap(n =>
+              Right(JsonValue.Key(n.toString)) :: Right(JsonValue.Number(n)) :: List.empty
+            ) ++ List(Left(JsonToken.EndObject)))
 
+          val result = writer.written.unsafeRunSync()
           ((result.toSet.diff(expected.toSet).eqv(Set.empty)): Prop) :| s"result $result \nvs expected: $expected"
         }
       }
