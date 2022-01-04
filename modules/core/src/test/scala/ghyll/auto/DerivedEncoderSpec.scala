@@ -1,17 +1,13 @@
 package ghyll.auto
 
 // import cats.effect.IO
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import ghyll._
-import ghyll.json.JsonToken
-import ghyll.json.JsonValue
+import ghyll.json.{JsonToken, JsonTokenWriter}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
-import cats.effect.IO
-import ghyll.json.JsonTokenReader.JsonTokenReaderResult
-import ghyll.utils.EitherOps
-import ghyll.json.JsonTokenWriter
-import cats.effect.unsafe.implicits.global
 
 class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with Checkers {
 
@@ -21,21 +17,21 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
   val foo =
     Foo("foobar", Map("baz" -> List(1, 2, 3)))
 
-  val fooRepr: List[JsonTokenReaderResult] =
+  val fooRepr: List[JsonToken] =
     List(
-      JsonToken.BeginObject.left,
-      JsonValue.Key("bar").right,
-      JsonValue.Str("foobar").right,
-      JsonValue.Key("baz").right,
-      JsonToken.BeginObject.left,
-      JsonValue.Key("baz").right,
-      JsonToken.BeginArray.left,
-      JsonValue.Number(1).right,
-      JsonValue.Number(2).right,
-      JsonValue.Number(3).right,
-      JsonToken.EndArray.left,
-      JsonToken.EndObject.left,
-      JsonToken.EndObject.left
+      JsonToken.BeginObject,
+      JsonToken.Key("bar"),
+      JsonToken.Str("foobar"),
+      JsonToken.Key("baz"),
+      JsonToken.BeginObject,
+      JsonToken.Key("baz"),
+      JsonToken.BeginArray,
+      JsonToken.Number(1),
+      JsonToken.Number(2),
+      JsonToken.Number(3),
+      JsonToken.EndArray,
+      JsonToken.EndObject,
+      JsonToken.EndObject
     )
 
   case class FooOption(bar: Option[String], baz: Int)
@@ -52,12 +48,12 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
           testEncoder(
             FooOption(Some("foobar"), 42),
             List(
-              JsonToken.BeginObject.left,
-              JsonValue.Key("bar").right,
-              JsonValue.Str("foobar").right,
-              JsonValue.Key("baz").right,
-              JsonValue.Number(42).right,
-              JsonToken.EndObject.left
+              JsonToken.BeginObject,
+              JsonToken.Key("bar"),
+              JsonToken.Str("foobar"),
+              JsonToken.Key("baz"),
+              JsonToken.Number(42),
+              JsonToken.EndObject
             )
           )(fooOptionDecoder)
         )
@@ -68,12 +64,12 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
           testEncoder(
             FooOption(None, 42),
             List(
-              JsonToken.BeginObject.left,
-              JsonValue.Key("bar").right,
-              JsonValue.Null.right,
-              JsonValue.Key("baz").right,
-              JsonValue.Number(42).right,
-              JsonToken.EndObject.left
+              JsonToken.BeginObject,
+              JsonToken.Key("bar"),
+              JsonToken.Null,
+              JsonToken.Key("baz"),
+              JsonToken.Number(42),
+              JsonToken.EndObject
             )
           )(fooOptionDecoder)
         )
@@ -86,7 +82,9 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
 
       def writer: JsonTokenWriter[IO] = ???
 
-      implicitly[DerivedEncoder[IO, Foo]].encode(Foo(List.range(1, 100000).map(Val(_))), writer).unsafeRunSync() shouldBe a[Right[_, _]]
+      implicitly[DerivedEncoder[IO, Foo]]
+        .encode(Foo(List.range(1, 100000).map(Val(_))), writer)
+        .unsafeRunSync() shouldBe a[Right[_, _]]
     }
   }
 }
