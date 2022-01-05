@@ -114,21 +114,17 @@ class DerivedDecoderSpec extends AnyWordSpec with Matchers with TestDecoder with
       }
     }
 
-    // "fail when a required field is missing" in {
-    //   check(
-    //     testDecoderFailure[FooOption](
-    //       "Couldn't find decoded value of baz",
-    //       Stream
-    //         .emits(
-    //           JsonToken.BeginObject ::
-    //             JsonToken.Key("bar") ::
-    //             JsonToken.Str("baz") ::
-    //             JsonToken.EndObject ::
-    //             Nil
-    //         )
-    //         .withPos
-    //     )
-    //   )
-    // }
+    "fail when a required field is missing" in {
+      check(
+        testDecoderFailure[FooOption](
+          "Couldn't find decoded value of baz",
+          JsonToken.BeginObject ::
+            JsonToken.Key("bar") ::
+            JsonToken.Str("baz") ::
+            JsonToken.EndObject ::
+            Nil
+        )
+      )
+    }
   }
 }

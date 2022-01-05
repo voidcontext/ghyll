@@ -1,10 +1,8 @@
 package ghyll.auto
 
-// import cats.effect.IO
 import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import ghyll._
-import ghyll.json.{JsonToken, JsonTokenWriter}
+import ghyll.json.JsonToken
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.Checkers
@@ -80,11 +78,17 @@ class DerivedEncoderSpec extends AnyWordSpec with Matchers with TestEncoder with
       case class Val(c: Int)
       case class Foo(bar: List[Val])
 
-      def writer: JsonTokenWriter[IO] = ???
+      val range = List.range(1, 100000)
 
-      implicitly[DerivedEncoder[IO, Foo]]
-        .encode(Foo(List.range(1, 100000).map(Val(_))), writer)
-        .unsafeRunSync() shouldBe a[Right[_, _]]
+      testEncoder(
+        Foo(range.map(Val(_))),
+        JsonToken.BeginObject ::
+          JsonToken.Key("bar") ::
+          JsonToken.BeginArray ::
+          range.flatMap(i =>
+            JsonToken.BeginObject :: JsonToken.Key("c") :: JsonToken.Number(i) :: JsonToken.EndObject :: Nil
+          ) ++ (JsonToken.EndArray :: JsonToken.EndObject :: Nil)
+      )
     }
   }
 }

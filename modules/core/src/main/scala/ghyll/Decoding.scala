@@ -1,10 +1,17 @@
 package ghyll
 
-import java.io.{File, FileInputStream, InputStream}
+import java.io.{File, FileInputStream, InputStream, InputStreamReader}
 
+import cats.MonadError
 import cats.effect.{Resource, Sync}
+import cats.syntax.flatMap._
+import cats.syntax.functor._
+import com.google.gson.stream.JsonReader
 import fs2.Stream
+import ghyll.json.JsonToken.TokenName
+import ghyll.json.{JsonToken, JsonTokenReader}
 import ghyll.jsonpath._
+import ghyll.utils.EitherOps
 
 private[ghyll] trait Decoding {
   def decodeArray[F[_]: Sync, T](json: InputStream)(implicit
@@ -58,7 +65,8 @@ private[ghyll] trait Decoding {
    */
   def decodeObject[F[_]: Sync, T](path: JsonPath, json: InputStream)(implicit
     d: Decoder[F, T]
-  ): Resource[F, DecoderResult[T]] = ???
+  ): Resource[F, DecoderResult[T]] =
+    readerResource(json).evalMap(traversePath(path)).evalMap(d.decode)
 
   /**
    * Shortcut of [[decodeKeyValues[F[_],T](path:ghyll\.jsonpath\.JsonPath,json:java\.io\.InputStream)*]], which safely
@@ -122,13 +130,76 @@ private[ghyll] trait Decoding {
   def decodeKeyValues[F[_]: Sync, T](
     path: JsonPath,
     json: InputStream
-  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] = ???
+  )(implicit d: Decoder[F, T]): Resource[F, Stream[F, DecoderResult[(String, T)]]] =
+    readerResource(json).evalMap(traversePath(path)).map { reader =>
+      Stream
+        .eval(
+          reader.next.map(
+            _.fold[DecoderResult[JsonTokenReader[F]]](
+              err => StreamingDecoderError.wrapError(err).left,
+              {
+                case (_, JsonToken.BeginObject) => reader.right
+                case (p, t)                     => StreamingDecoderError.unexpectedToken(t, p).left
+              }
+            )
+          )
+        )
+        .flatMap(
+          _.fold(
+            err => Stream.emit(err.left),
+            reader =>
+              Stream.unfoldEval(reader) { reader =>
+                reader.next.flatMap[Option[(DecoderResult[(String, T)], JsonTokenReader[F])]] {
+                  case Right((_, JsonToken.EndObject)) => Sync[F].pure(Option.empty)
+                  case Right((_, JsonToken.Key(key)))  =>
+                    d.decode(reader).map(_.map(value => (key -> value))).map(result => Some(result -> reader))
+                  case Right((p, t))                   =>
+                    Sync[F].raiseError(new RuntimeException(s"Expected ${TokenName[JsonToken.EndObject]
+                      .show()} or ${TokenName[JsonToken.Key]}, but got ${TokenName(t).show()} at $p"))
+                  case Left(err)                       => Sync[F].raiseError(new RuntimeException(s"Tokenizer error: $err"))
+                }
+              }
+          )
+        )
+    }
 
-  // private def traversePath(
-  //   path: JsonPath
-  // )(reader: JsonTokenReader): Unit = ???
+  private def traversePath[F[_]](
+    path: JsonPath
+  )(reader: JsonTokenReader[F])(implicit F: MonadError[F, Throwable]): F[JsonTokenReader[F]] =
+    path match {
+      case JNil          => F.pure(reader)
+      case head >:: tail => {
+        reader.next.flatMap {
+          case Right((_, JsonToken.BeginObject)) => skipUntil(head, reader).flatMap(traversePath(tail))
+          // TODO: nicer error handling here
+          case _                                 => F.raiseError(new RuntimeException("Error in traversePath"))
+        }
+      }
+    }
 
-  // private def skipUntil(name: String, reader: JsonTokenReader): Unit = ???
+  @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
+  private def skipUntil[F[_]](name: String, reader: JsonTokenReader[F])(implicit
+    F: MonadError[F, Throwable]
+  ): F[JsonTokenReader[F]] =
+    reader.next.flatMap {
+      case Right((_, JsonToken.Key(current))) if (current == name) => F.pure(reader)
+      case Right((_, JsonToken.Key(_)))                            =>
+        JsonTokenReader
+          .skipValue(reader)
+          .flatMap(result =>
+            F.fromEither(result.left.map[Throwable](err => new RuntimeException(err.toString)).as(reader))
+          )
+          .flatMap(skipUntil(name, _))
+      // TODO: nicer error handling here
+      case _                                                       => F.raiseError(new RuntimeException("Error in skipUntil"))
+    }
+
+  private def readerResource[F[_]: Sync](json: InputStream): Resource[F, JsonTokenReader[F]] =
+    Resource
+      .fromAutoCloseable(
+        Sync[F].delay(new JsonReader(new InputStreamReader(json)))
+      )
+      .evalMap(JsonTokenReader(_))
 
   private def fileInputStreamResource[F[_]: Sync](file: File): Resource[F, InputStream] =
     Resource.fromAutoCloseable(Sync[F].delay(new FileInputStream(file)))

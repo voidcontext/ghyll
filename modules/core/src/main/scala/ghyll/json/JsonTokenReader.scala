@@ -1,12 +1,16 @@
 package ghyll.json
 
+import cats.Monad
 import cats.effect.{Ref, Sync}
 import cats.syntax.applicative._
+import cats.syntax.eq._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import com.google.gson.stream.{JsonReader => GsonReader, JsonToken => GsonToken}
+import ghyll.StreamingDecoderResult.wrapError
+import ghyll.json.JsonToken.TokenName
 import ghyll.utils.EitherOps
-import ghyll.{Pos, TokeniserError, UnimplementedToken}
+import ghyll.{DecodingNestingerror, Pos, StreamingDecoderError, TokeniserError, UnimplementedToken}
 
 trait JsonTokenReader[F[_]] {
   def next: F[ReadResult]
@@ -38,6 +42,23 @@ object JsonTokenReader {
           } yield n
       }
     }
+
+  def skipValue[F[_]](reader: JsonTokenReader[F])(implicit F: Monad[F]): F[Either[StreamingDecoderError, Unit]] = {
+    def skip(stack: List[JsonToken]): F[Either[StreamingDecoderError, Unit]] =
+      reader.next.flatMap {
+        case Right((_, t @ (JsonToken.BeginArray | JsonToken.BeginObject)))                          => skip(t :: stack)
+        case Right(
+              (_, JsonToken.Null | JsonToken.Str(_) | JsonToken.Number(_) | JsonToken.Boolean(_) | JsonToken.Key(_))
+            ) =>
+          if (stack.isEmpty) F.pure(Right(())) else skip(stack)
+        case Right((_, JsonToken.EndArray)) if stack.headOption.exists(_ === JsonToken.BeginArray)   => skip(stack.tail)
+        case Right((_, JsonToken.EndObject)) if stack.headOption.exists(_ === JsonToken.BeginObject) => skip(stack.tail)
+        case Right(p -> t)                                                                           => wrapError(DecodingNestingerror(s"Nesting Error: got ${TokenName(t).show()} at $p"))
+        case Left(err)                                                                               => wrapError(err)
+      }
+
+    skip(Nil)
+  }
 
   private def read[F[_]](reader: GsonReader)(implicit F: Sync[F]): F[Either[TokeniserError, JsonToken]] =
     F.delay {

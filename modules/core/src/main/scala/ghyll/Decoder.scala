@@ -2,12 +2,14 @@ package ghyll
 
 import java.time.LocalDate
 
+import cats.Functor
 import cats.effect.Sync
 import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.{Applicative, Functor}
+import ghyll.StreamingDecoderError.notExpectedToken
+import ghyll.StreamingDecoderResult.wrapError
 import ghyll.json.JsonToken.TokenName
 import ghyll.json.{JsonToken, JsonTokenReader}
 import ghyll.utils.EitherOps
@@ -119,11 +121,8 @@ object Decoder {
 
   private def createDecodingFailure[T <: JsonToken: TokenName, A]
     : PartialFunction[(List[Pos], JsonToken), DecoderResult[A]] = { case (p, v) =>
-    Left(StreamingDecodingFailure(s"Expected ${TokenName[T].show()}, but got ${TokenName(v).show()} at $p"))
+    Left(notExpectedToken[T](v, p))
   }
-
-  private def wrapError[F[_]: Applicative, A](err: TokeniserError): StreamingDecoderResult[F, A] =
-    (StreamingDecodingFailure(s"Got error: $err"): StreamingDecoderError).left[A].pure[F]
 
   // TODO: make sure pos is accessible here
   private def catchDecodingFailure[A](body: => A): Either[StreamingDecoderError, A] =

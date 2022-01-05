@@ -11,4 +11,7 @@ object Codec {
 
       def encode(value: A, writer: JsonTokenWriter[F]): StreamingEncoderResult[F] = encoder.encode(value, writer)
     }
+
+  implicit def codec[F[_], A](implicit decoder: Decoder[F, A], encoder: Encoder[F, A]): Codec[F, A] =
+    apply[F, A](decoder, encoder)
 }

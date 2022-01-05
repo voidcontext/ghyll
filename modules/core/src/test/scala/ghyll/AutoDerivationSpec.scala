@@ -1,6 +1,7 @@
 package ghyll
 
 //import cats.effect.IO
+//import cats.effect.IO
 import cats.effect.IO
 import ghyll.json.JsonToken
 import ghyll.{TestDecoder, TestEncoder}
@@ -61,7 +62,7 @@ class AutoDerivationSpec extends AnyWordSpec with Matchers with TestEncoder with
       import ghyll.auto._
 
       def test[A](value: A, json: List[JsonToken])(implicit c: Codec[IO, A]) = {
-        testDecoder(value, json) && testEncoder(value, json)
+        testDecoder[A](value, json) && testEncoder(value, json)
       }
 
       check(
